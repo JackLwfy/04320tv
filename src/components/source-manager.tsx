@@ -64,6 +64,7 @@ const SECONDARY_TABS: Record<PrimaryTab, { id: SecondaryTab; label: string }[]> 
 const TAB_STORAGE_KEY = 'libretv-settings-tab';
 
 export function SourceManagerDrawer({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const { liveEnabled } = useAuth();
   const [primary, setPrimary] = useState<PrimaryTab>('sources');
   const [secondary, setSecondary] = useState<Record<PrimaryTab, SecondaryTab>>({
     sources: 'vod',
@@ -106,7 +107,8 @@ export function SourceManagerDrawer({ open, onClose }: { open: boolean; onClose:
     }
   }, [primary, secondary]);
 
-  const current = secondary[primary];
+  const current = secondary[primary] === 'live' && !liveEnabled ? 'vod' : secondary[primary];
+  const secondaryTabs = SECONDARY_TABS[primary].filter((tab) => tab.id !== 'live' || liveEnabled);
 
   return (
     <Drawer
@@ -118,9 +120,9 @@ export function SourceManagerDrawer({ open, onClose }: { open: boolean; onClose:
         <div className="space-y-2">
           <TabRow tabs={PRIMARY_TABS} value={primary} onChange={setPrimary} variant="primary" ariaLabel="设置分类" />
           {/* 分组下只有一项时无需二级导航，直接展示该面板 */}
-          {SECONDARY_TABS[primary].length > 1 && (
+          {secondaryTabs.length > 1 && (
             <TabRow
-              tabs={SECONDARY_TABS[primary]}
+              tabs={secondaryTabs}
               value={current}
               onChange={(id) => setSecondary((prev) => ({ ...prev, [primary]: id }))}
               variant="secondary"

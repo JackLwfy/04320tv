@@ -16,6 +16,7 @@ import { useToast } from './toast';
 type SetupRequired = boolean;
 
 interface AuthContextValue {
+  liveEnabled: boolean;
   checked: boolean;
   verified: boolean;
   /** 服务器未设置 PASSWORD，需要管理员配置 */
@@ -27,6 +28,7 @@ interface AuthContextValue {
 }
 
 const AuthContext = createContext<AuthContextValue>({
+  liveEnabled: false,
   checked: false,
   verified: false,
   setupRequired: false,
@@ -40,6 +42,7 @@ export function useAuth(): AuthContextValue {
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
+  const [liveEnabled, setLiveEnabled] = useState(false);
   const [checked, setChecked] = useState(false);
   const [verified, setVerified] = useState(false);
   const [setupRequired, setSetupRequired] = useState(false);
@@ -58,6 +61,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setVerified(s.verified);
         setSetupRequired(!s.passwordRequired);
         setVersion(s.version);
+        setLiveEnabled(s.liveEnabled === true);
         setChecked(true);
       })
       .catch(() => {
@@ -115,7 +119,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [toast, queryClient]);
 
   return (
-    <AuthContext.Provider value={{ checked, verified, setupRequired, version, openLogin, logout }}>
+    <AuthContext.Provider value={{ checked, verified, setupRequired, version, liveEnabled, openLogin, logout }}>
       {children}
       {modalOpen && (
         <LoginModal

@@ -110,7 +110,7 @@ export async function applyEnvPresets(status: AuthStatusResponse): Promise<void>
   if (Array.isArray(status.defaultSources)) {
     useAppStore.getState().setEnvSources(status.defaultSources);
   }
-  if (Array.isArray(status.defaultLiveSources)) {
+  if (status.liveEnabled && Array.isArray(status.defaultLiveSources)) {
     useAppStore.getState().setLiveEnvSources(status.defaultLiveSources);
   }
   if (Array.isArray(status.defaultSubscriptions) && status.defaultSubscriptions.length > 0) {

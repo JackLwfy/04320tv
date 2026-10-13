@@ -26,6 +26,7 @@ import type { AuthStatusResponse, SourceListPayload } from './types';
 const SUB_URL = 'https://paste.rs/JsI9D';
 
 const status = (over: Partial<AuthStatusResponse> = {}): AuthStatusResponse => ({
+  liveEnabled: true,
   passwordRequired: true,
   verified: false,
   version: 'test',
@@ -177,6 +178,13 @@ describe('applyEnvPresets · DEFAULT_RECOMMEND_SOURCE（issue #918）', () => {
 });
 
 describe('applyEnvPresets · DEFAULT_IMAGE_MODE', () => {
+  it('关闭直播时保留已保存的直播源，重新开启后仍可使用', async () => {
+    const sources = [{ key: 'saved', name: 'Saved', url: 'https://example.com/live.m3u' }];
+    useAppStore.setState({ liveEnvSources: sources, liveSelectedUrls: [sources[0].url] });
+    await applyEnvPresets(status({ liveEnabled: false, defaultLiveSources: [] }));
+    expect(useAppStore.getState().liveEnvSources).toEqual(sources);
+    expect(useAppStore.getState().liveSelectedUrls).toEqual([sources[0].url]);
+  });
   it('未配置时不改动封面图加载方式', async () => {
     useAppStore.setState({ imageProxyMode: 'direct', imageProxyModeTouched: false });
     await applyEnvPresets(status());

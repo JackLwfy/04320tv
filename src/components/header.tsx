@@ -10,9 +10,11 @@ import { requestShowDownloadManager } from './download-manager';
 import { Icon } from './icon';
 import { SearchHistoryDropdown, useSearchHistory } from './search-history';
 import { cn } from '@/lib/utils';
+import { useAuth } from './auth';
 
 /** 顶部导航：Logo、搜索框（首页外）、历史、设置 */
 export function Header({ showSearch = false }: { showSearch?: boolean }) {
+  const { liveEnabled } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -45,7 +47,7 @@ export function Header({ showSearch = false }: { showSearch?: boolean }) {
           </Link>
           <nav className="cinema-primary-nav" aria-label="主导航">
             <HeaderLink href="/" active={pathname === '/'}>发现</HeaderLink>
-            <HeaderLink href="/live" active={pathname === '/live'}>直播</HeaderLink>
+            {liveEnabled && <HeaderLink href="/live" active={pathname === '/live'}>直播</HeaderLink>}
           </nav>
 
           {showSearch && (
