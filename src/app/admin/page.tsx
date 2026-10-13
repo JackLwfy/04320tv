@@ -214,7 +214,7 @@ export default function AdminPage() {
         <div className={s.contentGrid}>
           <section className={s.editor} aria-label={active.label}>
             {section === 'newsletter' && <>
-              {toggle('newsletterEnabled', '在网站页脚显示“订阅光影来信”，由访客主动打开弹窗。', true)}
+              {toggle('newsletterEnabled', '首页访问验证通过后延迟弹出；当天关闭或订阅成功后不再自动弹出。页脚保留手动入口。', true)}
               <fieldset className={s.newsletterChoices}><legend>弹窗样式</legend>{([['lighthouse', '灯塔来信', '海岸画面与表单并列，延续首页的电影感。'], ['ticket', '电影票根', '用一张票根，邀请观众加入光影来信。'], ['minimal', '极简片尾', '收起图片，用文字和留白聚焦订阅。']] as const).map(([value, title, description]) => <label key={value} className={draft.newsletterStyle === value ? s.newsletterSelected : ''}><input type="radio" name="newsletter-style" checked={draft.newsletterStyle === value} onChange={() => update('newsletterStyle', value)} /><Image src={`/images/newsletter-${value}.png`} alt={`${title}设计参考`} width={480} height={320} /><strong>{title}</strong><span>{description}</span></label>)}</fieldset>
               <label className={s.field}>预览状态<select value={newsletterState} onChange={e => setNewsletterState(e.target.value as NewsletterState)}><option value="form">填写邮箱</option><option value="submitting">正在提交</option><option value="accepted">已收到订阅请求（当前接口）</option><option value="error">提交失败</option><option value="unavailable">服务暂未开放</option></select></label>
               <button className={s.primary} onClick={() => setNewsletterPreview(true)}>预览所选弹窗<Icon name="link" /></button>

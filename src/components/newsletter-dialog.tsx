@@ -9,9 +9,10 @@ import styles from './newsletter-dialog.module.css';
 export type NewsletterStyle = 'lighthouse' | 'ticket' | 'minimal';
 export type NewsletterState = 'form' | 'submitting' | 'accepted' | 'error' | 'unavailable';
 
-export function NewsletterDialog({ style, onClose, previewState }: {
+export function NewsletterDialog({ style, onClose, onAccepted, previewState }: {
   style: NewsletterStyle;
   onClose: () => void;
+  onAccepted?: () => void;
   previewState?: NewsletterState;
 }) {
   const id = useId();
@@ -72,6 +73,7 @@ export function NewsletterDialog({ style, onClose, previewState }: {
         return;
       }
       setState('accepted');
+      onAccepted?.();
     } catch {
       setState('error');
     } finally {
