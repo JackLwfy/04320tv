@@ -9,8 +9,16 @@ import { GlobalDownloadManager } from './download-manager';
 import { useAppStore, hydrateLiveProbeResults } from '@/lib/store';
 import { api, STATUS_QUERY_KEY } from '@/lib/client-api';
 import { applyEnvPresets } from '@/lib/subscription-sync';
+import { usePathname } from 'next/navigation';
 
 export function Providers({ children }: { children: ReactNode }) {
+  const pathname = usePathname();
+  // 后台交互原型不触发前台认证、源同步或下载任务。
+  if (pathname === '/admin' || pathname.startsWith('/admin/')) return <>{children}</>;
+  return <SiteProviders>{children}</SiteProviders>;
+}
+
+function SiteProviders({ children }: { children: ReactNode }) {
   const [queryClient] = useState(
     () =>
       new QueryClient({
