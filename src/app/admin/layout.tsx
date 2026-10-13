@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: '暗场控制室 · 后台预览',
+  title: '暗场控制室 · 网站管理',
   robots: { index: false, follow: false },
 };
 

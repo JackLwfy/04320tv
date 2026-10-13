@@ -26,7 +26,7 @@ export function getEnvSubscriptions(): EnvSubscription[] {
           : undefined;
       return { url: url.replace(/\/+$/, ''), name };
     });
-    return list;
+    return list.filter((_, i) => typeof parsed[i] !== 'object' || parsed[i]?.enabled !== false);
   } catch (err) {
     console.warn('[LibreTV] DEFAULT_SUBSCRIPTIONS 解析失败，已忽略：', err instanceof Error ? err.message : err);
     return [];

@@ -17,6 +17,7 @@ import { EmptyState } from '@/components/states';
 import { Icon } from '@/components/icon';
 import { SiteFooter } from '@/components/site-footer';
 import { HistoryPanel } from '@/components/history-panel';
+import { siteSettings } from '@/lib/site-settings';
 
 /**
  * 首页：搜索（URL ?s= 驱动，可后退/分享）+ 豆瓣推荐。
@@ -176,16 +177,16 @@ function HomeContent() {
             // eslint-disable-next-line @next/next/no-img-element
             <img src="/images/cinema-coast.webp" alt="" className="cinema-hero-art" fetchPriority="high" />
           )}
-          {!urlQuery && <p className="cinema-hero-aside" aria-hidden="true">有些故事<br />仍在等你。</p>}
           <div className="cinema-container cinema-hero-inner">
           {!urlQuery && (
             <header className="cinema-hero-copy">
               <p className="cinema-eyebrow">A MOMENT FOR CINEMA</p>
               <h1>把今晚，<br />交给好故事。</h1>
-              <p className="cinema-hero-description">搜索电影、剧集，找到下一段光影。</p>
+              <p className="cinema-hero-description">{siteSettings.description}</p>
+              {siteSettings.announcement && <p className="mb-6 max-w-xl whitespace-pre-wrap break-words text-sm text-[#e1ea9b]">{siteSettings.announcement}</p>}
             </header>
           )}
-          {urlQuery && <h1 className="sr-only">04320TV 视频搜索</h1>}
+          {urlQuery && <h1 className="sr-only">{siteSettings.name} 视频搜索</h1>}
           {/* 定位容器比胶囊宽一圈：浮层按它的宽度对齐，接缝处不会与胶囊边框错位 1px */}
           <div ref={searchHistory.containerRef} className="cinema-search relative w-full">
             <form
@@ -365,7 +366,7 @@ function HomeContent() {
         )}
 
         {/* 首页推荐（有搜索时隐藏） */}
-        {!urlQuery && (
+        {!urlQuery && siteSettings.recommendationsEnabled && (
           <RecommendSection
             onContinue={() => setHistoryOpen(true)}
             onPick={(title) => {

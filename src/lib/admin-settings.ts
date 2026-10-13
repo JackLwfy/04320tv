@@ -11,10 +11,7 @@ export const initialSettings: Settings = {
   name: '04320TV', subtitle: '光影之间', description: '搜索电影、剧集，找到下一段光影。',
   announcement: '有些故事，仍在等你。', logo: 'a', live: true, settings: true, recommendations: true,
   recommendSource: 'hot-list', imageMode: 'direct', autoplay: true, adFilter: true, adultFilter: true,
-  sources: [
-    { id: 'demo-vod', kind: 'vod', name: '电影资料库 · 示例', url: 'https://example.com/api/vod', enabled: true },
-    { id: 'demo-live', kind: 'live', name: '直播频道 · 示例', url: 'https://example.com/live.m3u', enabled: true },
-  ],
+  sources: [],
 };
 export const labels: Record<keyof Settings, string> = {
   name: '网站名称', subtitle: '网站副标题', description: '网站描述', announcement: '网站公告', logo: 'Logo 样式',
@@ -43,4 +40,28 @@ export function validateSettings(s: Settings): { section: Section; message: stri
     } catch { return { section: 'sources', message: `“${source.name}”需要不含账号密码的完整 HTTP(S) 地址。` }; }
   }
   return null;
+}
+
+export function parseSettings(value: unknown): Settings {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('配置格式无效。');
+  const input = value as Record<string, unknown>;
+  for (const key of ['name', 'subtitle', 'description', 'announcement', 'logo', 'recommendSource', 'imageMode']) {
+    if (typeof input[key] !== 'string') throw new Error('配置字段类型无效。');
+  }
+  for (const key of ['live', 'settings', 'recommendations', 'autoplay', 'adFilter', 'adultFilter']) {
+    if (typeof input[key] !== 'boolean') throw new Error('配置开关类型无效。');
+  }
+  if (!['a', 'b', 'c'].includes(input.logo as string) || !['hot-list', 'douban', 'bangumi'].includes(input.recommendSource as string) || !['direct', 'proxy'].includes(input.imageMode as string)) throw new Error('配置选项无效。');
+  if (!Array.isArray(input.sources) || input.sources.length > 50) throw new Error('数据源最多支持 50 项。');
+  const ids = new Set<string>();
+  const sources = input.sources.map((source) => {
+    if (!source || typeof source !== 'object' || !['vod', 'live', 'subscription'].includes(source.kind) || typeof source.name !== 'string' || source.name.length > 80 || typeof source.url !== 'string' || source.url.length > 1000 || typeof source.enabled !== 'boolean' || typeof source.id !== 'string' || !/^[\w-]{1,64}$/.test(source.id) || ids.has(source.id)) throw new Error('数据源格式或标识无效。');
+    ids.add(source.id);
+    return { id: source.id, kind: source.kind, name: source.name.trim(), url: source.url.trim(), enabled: source.enabled } as AdminSource;
+  });
+  const settings = Object.fromEntries(Object.keys(labels).map(key => [key, key === 'sources' ? sources : input[key]])) as unknown as Settings;
+  const error = validateSettings(settings);
+  if (error) throw new Error(error.message);
+  settings.name = settings.name.trim();
+  return settings;
 }

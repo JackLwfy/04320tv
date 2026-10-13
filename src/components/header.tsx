@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { brandPath } from '@/lib/brand';
+import { siteSettings } from '@/lib/site-settings';
 import { useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { ThemeToggle } from './theme';
@@ -43,12 +44,13 @@ export function Header({ showSearch = false }: { showSearch?: boolean }) {
     <>
       <header className="cinema-header sticky top-0 z-40 bg-page/95 backdrop-blur border-b border-line">
         <div className="cinema-container cinema-header-inner">
-          <Link href="/" aria-label="04320TV 首页" className="cinema-brand">
+          <Link href="/" aria-label={`${siteSettings.name} 首页`} className="cinema-brand">
             <span className="cinema-logo">
               <Image src={`${brandPath}/logo-light.svg`} alt="04320TV" width={490} height={112} className="cinema-logo-light" priority />
               <Image src={`${brandPath}/logo-dark.svg`} alt="" aria-hidden="true" width={490} height={112} className="cinema-logo-dark" priority />
+              {siteSettings.name !== '04320TV' && <span className="mt-1 block truncate text-xs" title={siteSettings.name}>{siteSettings.name}</span>}
             </span>
-            <span className="cinema-brand-caption">光影之间</span>
+            <span className="cinema-brand-caption">{siteSettings.subtitle}</span>
           </Link>
           <nav className="cinema-primary-nav" aria-label="主导航">
             <HeaderLink href="/" active={pathname === '/'}>发现</HeaderLink>

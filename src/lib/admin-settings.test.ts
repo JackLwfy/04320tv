@@ -1,0 +1,32 @@
+import { describe, expect, it } from 'vitest';
+import { changes, describeValue, initialSettings, parseSettings, validateSettings } from './admin-settings';
+
+const source = { id: 'test-source', kind: 'vod' as const, name: '测试源', url: 'https://video.example/api', enabled: true };
+
+describe('admin configuration', () => {
+  it('tracks reversible changes without altering the published snapshot', () => {
+    const draft = structuredClone(initialSettings);
+    draft.live = false;
+    draft.sources.push({ ...source, name: '新的源' });
+    expect(changes(initialSettings, draft)).toEqual(['live', 'sources']);
+    expect(describeValue(draft.sources)).toContain('新的源');
+    expect(describeValue(draft.sources)).not.toBe(describeValue(initialSettings.sources));
+    expect(initialSettings.live).toBe(true);
+    expect(changes(initialSettings, structuredClone(initialSettings))).toEqual([]);
+  });
+  it('validates the whole draft, including hidden source tabs', () => {
+    expect(validateSettings(initialSettings)).toBeNull();
+    expect(validateSettings({ ...initialSettings, name: ' ' })?.section).toBe('site');
+    expect(validateSettings({ ...initialSettings, description: '中'.repeat(201) })?.section).toBe('site');
+    for (const url of ['javascript:alert(1)', 'https://user:secret@example.com', 'not-a-url']) {
+      expect(validateSettings({ ...initialSettings, sources: [{ ...source, url }] })?.section).toBe('sources');
+    }
+  });
+  it.each([null, [], 'settings', 4, { ...initialSettings, name: 2 }, { ...initialSettings, live: 'false' }, { ...initialSettings, logo: 'unknown' }, { ...initialSettings, imageMode: 'unknown' }, { ...initialSettings, recommendSource: 'unknown' }, { ...initialSettings, sources: [null] }, { ...initialSettings, sources: [{ ...source, enabled: 'true' }] }, { ...initialSettings, sources: [source, source] }, { ...initialSettings, sources: Array.from({ length: 51 }, (_, i) => ({ ...source, id: `test-${i}` })) }])('rejects invalid input %# at the trust boundary', (value) => {
+    expect(() => parseSettings(value)).toThrow();
+  });
+  it('strips unknown fields, trims names, and starts without demonstration sources', () => {
+    expect(initialSettings.sources).toEqual([]);
+    expect(parseSettings({ ...initialSettings, name: '  我的影院  ', secret: 'injected', sources: [{ ...source, secret: 'injected' }] })).toEqual({ ...initialSettings, name: '我的影院', sources: [source] });
+  });
+});

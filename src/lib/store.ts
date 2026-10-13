@@ -5,6 +5,7 @@ import { createJSONStorage, persist } from 'zustand/middleware';
 import type { SourceConfig, LiveSourceConfig, SourceSearchOutcome } from './types';
 import { clearLiveProbeResultsDb, loadLiveProbeResults, saveLiveProbeResults } from './db';
 import { PERSIST_KEY, createThrottledStorage } from './persist-storage';
+import { siteSettings } from './site-settings';
 
 /**
  * 全局设置（zustand + localStorage 持久化）。
@@ -289,12 +290,12 @@ export const useAppStore = create<AppState>()(
       sourceHealth: {},
       envSubsSeen: [],
       selectedKeys: [],
-      yellowFilter: true,
-      adFilter: true,
+      yellowFilter: siteSettings.defaultAdultFilter,
+      adFilter: siteSettings.defaultAdFilter,
       doubanEnabled: true,
       recommendSource: 'hot-list',
       recommendSourceTouched: false,
-      autoplayNext: true,
+      autoplayNext: siteSettings.defaultAutoplay,
       // 直连优先：豆瓣封面有公共镜像 + 内置代理两级兜底（见 buildImageCandidates），
       // 默认省服务器流量；老用户保持已持久化的选择不受影响。
       // 部署者可用 DEFAULT_IMAGE_MODE=proxy 下发内置代理优先（最稳定，吃服务器流量）

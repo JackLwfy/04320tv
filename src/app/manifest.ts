@@ -1,11 +1,12 @@
 import type { MetadataRoute } from 'next';
 import { brandPath } from '@/lib/brand';
+import { siteSettings, siteTitle } from '@/lib/site-settings';
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: '04320TV · 光影之间',
-    short_name: '04320TV',
-    description: '免费在线视频搜索与观看平台',
+    name: siteTitle,
+    short_name: siteSettings.name,
+    description: siteSettings.description,
     start_url: '/',
     display: 'standalone',
     background_color: '#0f1311',

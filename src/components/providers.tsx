@@ -13,7 +13,7 @@ import { usePathname } from 'next/navigation';
 
 export function Providers({ children }: { children: ReactNode }) {
   const pathname = usePathname();
-  // 后台交互原型不触发前台认证、源同步或下载任务。
+  // 后台使用独立管理员认证，不触发前台源同步或下载任务。
   if (pathname === '/admin' || pathname.startsWith('/admin/')) return <>{children}</>;
   return <SiteProviders>{children}</SiteProviders>;
 }

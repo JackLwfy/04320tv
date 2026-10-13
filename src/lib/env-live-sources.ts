@@ -29,7 +29,7 @@ export function getEnvLiveSources(): LiveSourceConfig[] {
         epg: typeof epg === 'string' && epg.trim() ? epg.trim() : undefined,
       };
     });
-    return list;
+    return list.filter((_, i) => parsed[i].enabled !== false);
   } catch (err) {
     console.warn('[LibreTV] DEFAULT_LIVE_SOURCES 解析失败，已忽略：', err instanceof Error ? err.message : err);
     return [];

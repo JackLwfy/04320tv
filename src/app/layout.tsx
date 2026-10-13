@@ -1,16 +1,16 @@
 import type { Metadata, Viewport } from 'next';
 import { brandPath } from '@/lib/brand';
+import { siteSettings, siteTitle } from '@/lib/site-settings';
 import './globals.css';
 import './cinema.css';
 import { Providers } from '@/components/providers';
 
 export const metadata: Metadata = {
   title: {
-    default: '04320TV · 光影之间 - 电影与剧集搜索',
-    template: '%s - 04320TV · 光影之间',
+    default: `${siteTitle} - 电影与剧集搜索`,
+    template: `%s - ${siteTitle}`,
   },
-  description:
-    '04320TV 光影之间，搜索电影与剧集，浏览影视榜单与直播，找到下一段光影。基于 LibreTV。',
+  description: siteSettings.description,
   manifest: '/manifest.webmanifest',
   icons: {
     icon: [
