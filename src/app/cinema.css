@@ -36,7 +36,10 @@
 .cinema-container { width: 100%; max-width: 1600px; margin-inline: auto; padding-inline: clamp(20px, 3.7vw, 64px); }
 .cinema-header-inner { display: flex; align-items: center; gap: 44px; min-height: 80px; }
 .cinema-brand { display: flex; align-items: center; flex-shrink: 0; gap: 20px; }
-.cinema-wordmark { font-family: Georgia, 'Times New Roman', serif; font-size: 48px; font-weight: 700; letter-spacing: -2px; line-height: 1; }
+.cinema-logo { display: block; width: 224px; flex-shrink: 0; }
+.cinema-logo img { display: block; width: 100%; height: auto; }
+.cinema-logo .cinema-logo-dark, .dark .cinema-logo-light { display: none; }
+.dark .cinema-logo-dark { display: block; }
 .cinema-brand-caption { border-left: 1px solid rgb(var(--c-muted)); padding-left: 20px; font-size: 13px; letter-spacing: .2em; white-space: nowrap; }
 .cinema-primary-nav { display: flex; align-items: center; gap: 30px; }
 .cinema-nav-link { position: relative; display: inline-flex; align-items: center; min-height: 48px; font-size: 17px; color: rgb(var(--c-muted)); white-space: nowrap; }
@@ -90,7 +93,7 @@
 .cinema-filter[aria-pressed='true'] { color: rgb(var(--c-accent)); border-bottom-color: rgb(var(--c-accent)); }
 .cinema-footer { border-top: 1px solid rgb(var(--c-line)); padding-block: 24px; }
 .cinema-footer-inner { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px 24px; color: rgb(var(--c-faint)); font-size: 12px; line-height: 1.8; }
-.cinema-footer-links { display: flex; flex-wrap: wrap; gap: 16px; }
+.cinema-footer-links { display: flex; margin-left: auto; }
 .cinema-footer a:hover { color: rgb(var(--c-accent)); }
 .cinema-nav-link:focus-visible, .cinema-tool:focus-visible, .cinema-poster:focus-visible, .cinema-filter:focus-visible, .cinema-recommend-actions button:focus-visible { outline: 2px solid rgb(var(--c-accent)); outline-offset: 5px; }
 @media (min-width: 1600px) { .cinema-hero-inner { padding-block: 64px; } }
@@ -102,7 +105,7 @@
 }
 @media (max-width: 767px) {
   .cinema-header-inner { min-height: 68px; gap: 20px; flex-wrap: wrap; padding-block: 10px; }
-  .cinema-wordmark { font-size: 36px; }
+  .cinema-logo { width: 188px; }
   .cinema-primary-nav { gap: 20px; }
   .cinema-tools { gap: 2px; }
   .cinema-tool-icon { display: flex; justify-content: center; }
@@ -126,7 +129,7 @@
 }
 @media (max-width: 480px) {
   .cinema-header-inner { gap: 10px; }
-  .cinema-wordmark { font-size: 32px; }
+  .cinema-logo { width: 168px; }
   .cinema-primary-nav { gap: 12px; }
   .cinema-tools { width: 100%; margin-left: 0; justify-content: flex-end; gap: 8px; }
   .cinema-tool { min-width: 44px; }

@@ -100,6 +100,7 @@ PASSWORD=your-password npm start   # 监听 8080
 | `60S_API_BASE` | 否 | 影视榜单推荐源（60s API）实例地址，默认 `https://60s.crystelf.top`；有限流，高频使用可[自部署](https://github.com/vikiboss/60s) |
 | `DEFAULT_LIVE_SOURCES` | 否 | 预置直播源（M3U 订阅），JSON 数组：`[{"name":"源名","url":"https://.../list.m3u","epg":"https://.../epg.xml.gz"}]`，`epg` 为可选的 XMLTV 节目单地址 |
 | `LIVE_ENABLED` | 否 | 直播总开关，默认开启；`true` 开启，`false`（或 `0`）关闭。关闭后隐藏直播导航和直播源设置，访问 `/live` 返回首页，直播接口返回 403，已有直播源配置保留。EdgeOne 修改后需重新部署，已打开的页面需刷新 |
+| `SETTINGS_ENABLED` | 否 | 前台设置总开关，默认开启；`true` 开启，`false`（或 `0`）隐藏设置按钮并关闭设置抽屉，已有配置保留。EdgeOne 修改后需重新部署，已打开的页面需刷新 |
 | `DEFAULT_SUBSCRIPTIONS` | 否 | 预置数据源订阅（LibreTV-SourceList JSON 链接，也接受 TVBOX 配置地址），JSON 数组：`["https://.../sources.json", {"url":"https://.../list.json","name":"名称"}]`。首次访问自动导入点播源与直播源，之后每 24h 静默刷新；用户删除后不再自动加回 |
 | `DEFAULT_RECOMMEND_SOURCE` | 否 | 首页推荐数据源的默认值（`douban` / `bangumi` / `hot-list`，出厂默认 `hot-list`）；仅对未在设置中主动选择过的用户生效，用户的选择始终优先 |
 | `LIVE_ALLOW_PRIVATE` | 否 | 设为 `1` 时允许直播流代理访问内网/保留地址（自建 IPTV 场景），默认关闭以维持 SSRF 防护 |
@@ -245,3 +246,11 @@ CI 校验通过后自动构建并推送 `ghcr.io/librespark/libretv:<版本>`（
 本项目不存储、不制作任何视频内容，仅提供第三方公开接口的聚合与播放能力，内容的合法性由对应数据源负责。
 
 ☕ 觉得有用的话，可以到 [AFDIAN](https://afdian.com/a/veehub) 请我喝杯咖啡。
+
+### 切换 04320TV Logo
+
+在 EdgeOne 项目环境变量中设置 `NEXT_PUBLIC_LOGO_STYLE`：`A` 影院经典、`B` 醒目识别、`C` 灯塔光影。默认 A，支持小写；空值或无效值回退 A。修改后保存并重新部署，刷新客户端即可看到新方案。该变量是公开的品牌选项，不要填入密钥。
+
+三套资源同步覆盖页头、深浅色模式、点播/直播加载图、浏览器图标与 PWA 图标。移动端使用紧凑尺寸，Logo 字体已经转为矢量轮廓，无需客户端安装字体。不同方案使用独立资源路径，避免切换时沿用旧图片缓存。已添加到主屏幕的图标可能被系统缓存，需要重新添加；这不影响网页切换。
+
+本地 `.env.local` 修改后重新执行构建；Docker Compose 修改 `.env` 后执行 `docker compose up -d --build`。现成镜像的 Logo 在构建时固定，仅修改运行容器环境变量不会切换。

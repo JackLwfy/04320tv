@@ -16,6 +16,7 @@ import { useToast } from './toast';
 type SetupRequired = boolean;
 
 interface AuthContextValue {
+  settingsEnabled: boolean;
   liveEnabled: boolean;
   checked: boolean;
   verified: boolean;
@@ -28,6 +29,7 @@ interface AuthContextValue {
 }
 
 const AuthContext = createContext<AuthContextValue>({
+  settingsEnabled: false,
   liveEnabled: false,
   checked: false,
   verified: false,
@@ -42,6 +44,7 @@ export function useAuth(): AuthContextValue {
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
+  const [settingsEnabled, setSettingsEnabled] = useState(false);
   const [liveEnabled, setLiveEnabled] = useState(false);
   const [checked, setChecked] = useState(false);
   const [verified, setVerified] = useState(false);
@@ -62,6 +65,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setSetupRequired(!s.passwordRequired);
         setVersion(s.version);
         setLiveEnabled(s.liveEnabled === true);
+        setSettingsEnabled(s.settingsEnabled === true);
         setChecked(true);
       })
       .catch(() => {
@@ -119,7 +123,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [toast, queryClient]);
 
   return (
-    <AuthContext.Provider value={{ checked, verified, setupRequired, version, liveEnabled, openLogin, logout }}>
+    <AuthContext.Provider value={{ checked, verified, setupRequired, version, liveEnabled, settingsEnabled, openLogin, logout }}>
       {children}
       {modalOpen && (
         <LoginModal

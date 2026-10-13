@@ -26,6 +26,7 @@ import type { AuthStatusResponse, SourceListPayload } from './types';
 const SUB_URL = 'https://paste.rs/JsI9D';
 
 const status = (over: Partial<AuthStatusResponse> = {}): AuthStatusResponse => ({
+  settingsEnabled: true,
   liveEnabled: true,
   passwordRequired: true,
   verified: false,

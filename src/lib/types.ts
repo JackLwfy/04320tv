@@ -91,6 +91,8 @@ export interface BangumiCalendarResponse {
 }
 
 export interface AuthStatusResponse {
+  /** 部署者通过 SETTINGS_ENABLED 控制前台设置入口 */
+  settingsEnabled: boolean;
   /** 部署者通过 LIVE_ENABLED 控制直播功能，客户端不得覆盖 */
   liveEnabled: boolean;
   /** 服务器是否配置了 PASSWORD */

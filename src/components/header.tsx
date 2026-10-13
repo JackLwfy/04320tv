@@ -1,6 +1,8 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
+import { brandPath } from '@/lib/brand';
 import { useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { ThemeToggle } from './theme';
@@ -14,7 +16,7 @@ import { useAuth } from './auth';
 
 /** 顶部导航：Logo、搜索框（首页外）、历史、设置 */
 export function Header({ showSearch = false }: { showSearch?: boolean }) {
-  const { liveEnabled } = useAuth();
+  const { liveEnabled, settingsEnabled } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -41,8 +43,11 @@ export function Header({ showSearch = false }: { showSearch?: boolean }) {
     <>
       <header className="cinema-header sticky top-0 z-40 bg-page/95 backdrop-blur border-b border-line">
         <div className="cinema-container cinema-header-inner">
-          <Link href="/" aria-label="04320 首页" className="cinema-brand">
-            <span className="cinema-wordmark">04320</span>
+          <Link href="/" aria-label="04320TV 首页" className="cinema-brand">
+            <span className="cinema-logo">
+              <Image src={`${brandPath}/logo-light.svg`} alt="04320TV" width={490} height={112} className="cinema-logo-light" priority />
+              <Image src={`${brandPath}/logo-dark.svg`} alt="" aria-hidden="true" width={490} height={112} className="cinema-logo-dark" priority />
+            </span>
             <span className="cinema-brand-caption">光影之间</span>
           </Link>
           <nav className="cinema-primary-nav" aria-label="主导航">
@@ -108,14 +113,14 @@ export function Header({ showSearch = false }: { showSearch?: boolean }) {
             <IconButton label="下载管理" onClick={requestShowDownloadManager}>
               <Icon name="download" />
             </IconButton>
-            <IconButton label="设置" onClick={() => setSettingsOpen(true)}>
+            {settingsEnabled && <IconButton label="设置" onClick={() => setSettingsOpen(true)}>
               <Icon name="gear" />
-            </IconButton>
+            </IconButton>}
           </nav>
         </div>
       </header>
 
-      <SourceManagerDrawer open={settingsOpen} onClose={() => setSettingsOpen(false)} />
+      {settingsEnabled && <SourceManagerDrawer open={settingsOpen} onClose={() => setSettingsOpen(false)} />}
       <HistoryPanel open={historyOpen} onClose={() => setHistoryOpen(false)} />
     </>
   );

@@ -6,6 +6,8 @@ COPY package.json package-lock.json* ./
 RUN npm ci --no-audit --no-fund
 
 COPY . .
+ARG NEXT_PUBLIC_LOGO_STYLE=A
+ENV NEXT_PUBLIC_LOGO_STYLE=$NEXT_PUBLIC_LOGO_STYLE
 ENV DOCKER_BUILD=1
 ENV NEXT_TELEMETRY_DISABLED=1
 RUN npm run build

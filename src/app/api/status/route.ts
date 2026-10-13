@@ -6,6 +6,7 @@ import { getEnvSubscriptions } from '@/lib/env-subscriptions';
 import { getEnvRecommendSource } from '@/lib/env-recommend-source';
 import { getEnvImageMode } from '@/lib/env-image-mode';
 import { isLiveEnabled } from '@/lib/env-live-enabled';
+import { isSettingsEnabled } from '@/lib/env-settings-enabled';
 
 export const runtime = 'nodejs';
 
@@ -18,6 +19,7 @@ export async function GET(req: Request) {
     passwordRequired,
     verified,
     liveEnabled,
+    settingsEnabled: isSettingsEnabled(),
     // 构建时由 next.config.ts 从 package.json 注入
     version: process.env.APP_VERSION || 'dev',
     // 部署者通过 DEFAULT_SOURCES 预置的采集站

@@ -1,5 +1,7 @@
 'use client';
 
+import { brandPath } from '@/lib/brand';
+
 import { useEffect, useRef, useState } from 'react';
 import Artplayer from 'artplayer';
 import Hls, { type HlsConfig } from 'hls.js';
@@ -498,7 +500,7 @@ export function PlayerShell({
         <div
           className="absolute inset-0 bg-black pointer-events-none"
           style={{
-            backgroundImage: 'url(/player-poster.png)',
+            backgroundImage: `url(${brandPath}/poster.svg)`,
             backgroundSize: 'contain',
             backgroundPosition: 'center',
             backgroundRepeat: 'no-repeat',

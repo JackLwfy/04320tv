@@ -185,7 +185,7 @@ function HomeContent() {
               <p className="cinema-hero-description">搜索电影、剧集，找到下一段光影。</p>
             </header>
           )}
-          {urlQuery && <h1 className="sr-only">04320 视频搜索</h1>}
+          {urlQuery && <h1 className="sr-only">04320TV 视频搜索</h1>}
           {/* 定位容器比胶囊宽一圈：浮层按它的宽度对齐，接缝处不会与胶囊边框错位 1px */}
           <div ref={searchHistory.containerRef} className="cinema-search relative w-full">
             <form

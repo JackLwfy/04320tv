@@ -1,26 +1,23 @@
 import type { Metadata, Viewport } from 'next';
+import { brandPath } from '@/lib/brand';
 import './globals.css';
 import './cinema.css';
 import { Providers } from '@/components/providers';
 
 export const metadata: Metadata = {
   title: {
-    default: '04320 · 光影之间 - 电影与剧集搜索',
-    template: '%s - 04320 · 光影之间',
+    default: '04320TV · 光影之间 - 电影与剧集搜索',
+    template: '%s - 04320TV · 光影之间',
   },
   description:
-    '04320 光影之间，搜索电影与剧集，浏览影视榜单与直播，找到下一段光影。基于 LibreTV。',
+    '04320TV 光影之间，搜索电影与剧集，浏览影视榜单与直播，找到下一段光影。基于 LibreTV。',
   manifest: '/manifest.webmanifest',
-  // 图标与门户站（LibreTV-portal）同一套：同一张 artwork 导出的多尺寸 + 根目录 favicon.ico 兜底。
-  // 只声明单张 512 时，抓取端只能拿大图缩放，小尺寸下易糊、看起来「没填满」。
   icons: {
     icon: [
-      { url: '/favicon.ico', sizes: '48x48' },
-      { url: '/icons/icon-96.png', sizes: '96x96', type: 'image/png' },
-      { url: '/icons/icon-192.png', sizes: '192x192', type: 'image/png' },
-      { url: '/icons/icon-512.png', sizes: '512x512', type: 'image/png' },
+      { url: `${brandPath}/icon.svg`, type: 'image/svg+xml' },
+      { url: `${brandPath}/icon-96.png`, sizes: '96x96', type: 'image/png' },
     ],
-    apple: [{ url: '/icons/apple-touch-icon.png', sizes: '180x180', type: 'image/png' }],
+    apple: [{ url: `${brandPath}/apple-touch-icon.png`, sizes: '180x180', type: 'image/png' }],
   },
 };
 
