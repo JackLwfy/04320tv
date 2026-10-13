@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/components/auth';
+import Link from 'next/link';
 
 /** 上游仓库最新 tag（即最新版本号），用于页脚的更新检测 */
 const UPSTREAM_TAGS_API = 'https://api.github.com/repos/LibreSpark/LibreTV/tags?per_page=1';
@@ -90,8 +91,12 @@ export function SiteFooter() {
   const { version } = useAuth();
   const upstreamUpdate = useUpstreamUpdate(version);
   return (
-    <footer className="border-t border-line py-4">
-      <p className="text-center text-xs text-faint">
+    <footer className="cinema-footer">
+      <div className="cinema-container cinema-footer-inner">
+      <p>04320 仅提供影片搜索服务，内容来源于第三方。</p>
+      <p className="cinema-footer-links">
+        <Link href="/about">关于本站</Link>
+        <a href="https://github.com/JackLwfy/04320tv" target="_blank" rel="noopener noreferrer">本站源码</a>
         <a
           href="https://github.com/LibreSpark/LibreTV"
           target="_blank"
@@ -104,6 +109,7 @@ export function SiteFooter() {
         {' · '}
         AGPL-3.0 License
       </p>
+      </div>
     </footer>
   );
 }

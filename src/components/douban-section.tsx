@@ -7,20 +7,23 @@ import { useAppStore } from '@/lib/store';
 import { cn } from '@/lib/utils';
 import type { DoubanItem } from '@/lib/types';
 import { DoubanCard } from './video-card';
+import { Icon } from './icon';
 
 const MOVIE_TAGS = ['热门', '最新', '经典', '豆瓣高分', '冷门佳片', '华语', '欧美', '韩国', '日本', '动画'];
 const TV_TAGS = ['热门', '美剧', '英剧', '韩剧', '日剧', '国产剧', '港剧', '日本动画', '综艺', '纪录片'];
 const WEEKDAYS = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
 
 /** 首页推荐区：数据源由设置决定（豆瓣热门 / Bangumi 新番放送 / 影视热榜），二选一展示 */
-export function RecommendSection({ onPick }: { onPick: (title: string) => void }) {
+type RecommendProps = { onPick: (title: string) => void; onContinue: () => void };
+
+export function RecommendSection({ onPick, onContinue }: RecommendProps) {
   const doubanEnabled = useAppStore((s) => s.doubanEnabled);
   const recommendSource = useAppStore((s) => s.recommendSource);
 
   if (!doubanEnabled) return null;
-  if (recommendSource === 'bangumi') return <BangumiView onPick={onPick} />;
-  if (recommendSource === 'hot-list') return <HotListView onPick={onPick} />;
-  return <DoubanView onPick={onPick} />;
+  if (recommendSource === 'bangumi') return <BangumiView onPick={onPick} onContinue={onContinue} />;
+  if (recommendSource === 'hot-list') return <HotListView onPick={onPick} onContinue={onContinue} />;
+  return <DoubanView onPick={onPick} onContinue={onContinue} />;
 }
 
 /**
@@ -28,7 +31,7 @@ export function RecommendSection({ onPick }: { onPick: (title: string) => void }
  * 一次性渲染全部条目：数据本就一次拉全（50 条），卡片图片又是 lazy 加载，
  * 视口外的图不会请求，因此不需要「加载更多」这类本地切片分页来打断浏览。
  */
-function DoubanView({ onPick }: { onPick: (title: string) => void }) {
+function DoubanView({ onPick, onContinue }: RecommendProps) {
   const [type, setType] = useState<'movie' | 'tv'>('movie');
   const [tag, setTag] = useState('热门');
 
@@ -48,9 +51,10 @@ function DoubanView({ onPick }: { onPick: (title: string) => void }) {
 
   return (
     <section aria-label="影视推荐">
+      <RecommendHeading title={type === 'movie' ? '发现好电影' : '发现好剧集'} subtitle="豆瓣推荐" onContinue={onContinue} onRefresh={() => void query.refetch()} refreshing={query.isFetching} />
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
-          <div className="flex bg-chip rounded-lg p-0.5">
+          <div className="flex gap-6">
             <TypeButton active={type === 'movie'} onClick={() => switchType('movie')}>
               电影
             </TypeButton>
@@ -61,14 +65,12 @@ function DoubanView({ onPick }: { onPick: (title: string) => void }) {
         </div>
       </div>
 
-      <div className="flex flex-wrap gap-1.5 mb-4">
+      <div className="cinema-filter-row">
         {tags.map((t) => (
           <button
             key={t}
-            className={cn(
-              'px-2.5 py-1 rounded-full text-xs transition-colors',
-              t === tag ? 'bg-accent text-on-accent' : 'bg-chip text-muted hover:text-content hover:bg-hover'
-            )}
+            className="cinema-filter"
+            aria-pressed={t === tag}
             onClick={() => setTag(t)}
           >
             {t}
@@ -83,7 +85,7 @@ function DoubanView({ onPick }: { onPick: (title: string) => void }) {
       ) : items.length === 0 ? (
         <p className="text-center text-sm text-faint py-8">该分类暂无推荐内容</p>
       ) : (
-        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-2.5">
+        <div className="cinema-recommend-grid">
           {items.map((item) => (
             <DoubanCard key={item.id} item={item} onClick={() => onPick(item.title)} />
           ))}
@@ -94,7 +96,7 @@ function DoubanView({ onPick }: { onPick: (title: string) => void }) {
 }
 
 /** Bangumi 每日放送：星期筛选，一次拉全量无分页 */
-function BangumiView({ onPick }: { onPick: (title: string) => void }) {
+function BangumiView({ onPick, onContinue }: RecommendProps) {
   const [weekday, setWeekday] = useState<number | 'all'>('all');
 
   const query = useQuery({
@@ -111,7 +113,8 @@ function BangumiView({ onPick }: { onPick: (title: string) => void }) {
 
   return (
     <section aria-label="新番放送推荐">
-      <div className="flex flex-wrap gap-1.5 mb-4">
+      <RecommendHeading title="新番放送" subtitle="Bangumi" onContinue={onContinue} onRefresh={() => void query.refetch()} refreshing={query.isFetching} />
+      <div className="cinema-filter-row">
         <ChipButton active={weekday === 'all'} onClick={() => setWeekday('all')}>
           全部
         </ChipButton>
@@ -127,7 +130,7 @@ function BangumiView({ onPick }: { onPick: (title: string) => void }) {
       ) : query.isLoading ? (
         <GridSkeleton />
       ) : (
-        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-2.5">
+        <div className="cinema-recommend-grid">
           {items.map((item) => (
             <DoubanCard key={item.id} item={item} onClick={() => onPick(item.title)} />
           ))}
@@ -147,7 +150,7 @@ const HOT_LISTS = [
 ];
 
 /** 影视热榜（60s API）：豆瓣五个周榜 + 百度热播剧，chips 切换 */
-function HotListView({ onPick }: { onPick: (title: string) => void }) {
+function HotListView({ onPick, onContinue }: RecommendProps) {
   const [listId, setListId] = useState(HOT_LISTS[0].id);
 
   const query = useQuery({
@@ -159,20 +162,24 @@ function HotListView({ onPick }: { onPick: (title: string) => void }) {
 
   return (
     <section aria-label="影视榜单推荐">
-      <div className="flex flex-wrap gap-1.5 mb-4">
+      <RecommendHeading title={listId === 'douban_movie_weekly' ? '本周电影榜' : HOT_LISTS.find((l) => l.id === listId)?.label || '影视热榜'} subtitle="榜单推荐" onContinue={onContinue} onRefresh={() => void query.refetch()} refreshing={query.isFetching}>
+      <div className="cinema-filter-row cinema-inline-filters">
         {HOT_LISTS.map((l) => (
           <ChipButton key={l.id} active={listId === l.id} onClick={() => setListId(l.id)}>
             {l.label}
           </ChipButton>
         ))}
       </div>
+      </RecommendHeading>
 
       {query.isError ? (
         <p className="text-center text-sm text-faint py-8">推荐内容加载失败，可稍后重试或在设置中关闭</p>
       ) : query.isLoading ? (
         <GridSkeleton />
+      ) : items.length === 0 ? (
+        <p className="text-center text-sm text-faint py-8">该榜单暂无内容，可刷新重试或切换榜单</p>
       ) : (
-        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-2.5">
+        <div className="cinema-recommend-grid">
           {items.map((item) => (
             <DoubanCard key={item.id} item={item} onClick={() => onPick(item.title)} />
           ))}
@@ -184,10 +191,10 @@ function HotListView({ onPick }: { onPick: (title: string) => void }) {
 
 function GridSkeleton() {
   return (
-    <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-2.5">
-      {Array.from({ length: 16 }).map((_, i) => (
+    <div className="cinema-recommend-grid" aria-label="正在加载推荐">
+      {Array.from({ length: 5 }).map((_, i) => (
         <div key={i}>
-          <div className="aspect-[2/3] rounded-lg bg-chip animate-pulse" />
+          <div className="aspect-[2/2.5] bg-chip animate-pulse" />
           <div className="h-3 mt-2 rounded bg-chip animate-pulse" />
         </div>
       ))}
@@ -198,10 +205,8 @@ function GridSkeleton() {
 function ChipButton({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
   return (
     <button
-      className={cn(
-        'px-2.5 py-1 rounded-full text-xs transition-colors',
-        active ? 'bg-accent text-on-accent' : 'bg-chip text-muted hover:text-content hover:bg-hover'
-      )}
+      className="cinema-filter"
+      aria-pressed={active}
       onClick={onClick}
     >
       {children}
@@ -212,11 +217,31 @@ function ChipButton({ active, onClick, children }: { active: boolean; onClick: (
 function TypeButton({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
   return (
     <button
-      className={cn('px-3.5 py-1.5 rounded-md text-sm transition-colors', active ? 'bg-accent text-on-accent' : 'text-muted hover:text-content')}
+      className="cinema-filter"
       onClick={onClick}
       aria-pressed={active}
     >
       {children}
     </button>
+  );
+}
+
+function RecommendHeading({ title, subtitle, onContinue, onRefresh, refreshing, children }: {
+  title: string; subtitle: string; onContinue: () => void; onRefresh: () => void; refreshing: boolean;
+  children?: React.ReactNode;
+}) {
+  return (
+    <div className="cinema-recommend-heading">
+      <h2>{title}</h2>
+      <span className="cinema-recommend-subtitle">{subtitle}</span>
+      {children}
+      <div className="cinema-recommend-actions">
+        <button type="button" onClick={onContinue}>继续观看</button>
+        <button type="button" onClick={onRefresh} disabled={refreshing}>
+          <Icon name="refresh" className={cn('w-4 h-4', refreshing && 'animate-spin motion-reduce:animate-none')} />
+          {refreshing ? '刷新中' : '刷新榜单'}
+        </button>
+      </div>
+    </div>
   );
 }

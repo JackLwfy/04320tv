@@ -16,6 +16,7 @@ import { useToast } from '@/components/toast';
 import { EmptyState } from '@/components/states';
 import { Icon } from '@/components/icon';
 import { SiteFooter } from '@/components/site-footer';
+import { HistoryPanel } from '@/components/history-panel';
 
 /**
  * 首页：搜索（URL ?s= 驱动，可后退/分享）+ 豆瓣推荐。
@@ -46,6 +47,7 @@ function HomeContent() {
   const sourceHealth = useAppStore((s) => s.sourceHealth);
   const subscriptions = useAppStore((s) => s.subscriptions);
   const [input, setInput] = useState(urlQuery);
+  const [historyOpen, setHistoryOpen] = useState(false);
   const [detailItem, setDetailItem] = useState<SearchResultItem | null>(null);
   /** 流式搜索中已结算的源（data 就绪前用于增量渲染） */
   const [streamedOutcomes, setStreamedOutcomes] = useState<SourceSearchOutcome[]>([]);
@@ -167,29 +169,25 @@ function HomeContent() {
     <div className="min-h-screen flex flex-col">
       <Header />
 
-      <main className="relative flex-1 max-w-6xl w-full mx-auto px-4 py-6">
-        {/* 首屏氛围渐变 */}
-        {!urlQuery && (
-          <div
-            aria-hidden
-            className="pointer-events-none absolute inset-x-0 top-0 h-[420px] -z-10"
-            style={{
-              background:
-                'radial-gradient(60% 60% at 50% 0%, rgba(35,173,229,0.10) 0%, rgba(35,173,229,0.03) 45%, transparent 75%)',
-            }}
-          />
-        )}
-
+      <main className="flex-1">
         {/* 搜索区 */}
-        <section className={cn('flex flex-col items-center', urlQuery ? 'mb-6' : 'mt-8 mb-8')}>
+        <section className={cn('cinema-search-section', urlQuery ? 'cinema-search-compact' : 'cinema-hero')}>
           {!urlQuery && (
-            <header className="text-center mb-6">
-              <h1 className="text-4xl sm:text-5xl font-bold brand-gradient">LibreTV</h1>
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src="/images/cinema-coast.webp" alt="" className="cinema-hero-art" fetchPriority="high" />
+          )}
+          {!urlQuery && <p className="cinema-hero-aside" aria-hidden="true">有些故事<br />仍在等你。</p>}
+          <div className="cinema-container cinema-hero-inner">
+          {!urlQuery && (
+            <header className="cinema-hero-copy">
+              <p className="cinema-eyebrow">A MOMENT FOR CINEMA</p>
+              <h1>把今晚，<br />交给好故事。</h1>
+              <p className="cinema-hero-description">搜索电影、剧集，找到下一段光影。</p>
             </header>
           )}
-          {urlQuery && <h1 className="sr-only">LibreTV 视频搜索</h1>}
+          {urlQuery && <h1 className="sr-only">04320 视频搜索</h1>}
           {/* 定位容器比胶囊宽一圈：浮层按它的宽度对齐，接缝处不会与胶囊边框错位 1px */}
-          <div ref={searchHistory.containerRef} className="relative w-full max-w-2xl">
+          <div ref={searchHistory.containerRef} className="cinema-search relative w-full">
             <form
               className="w-full"
               onSubmit={(e) => {
@@ -204,7 +202,7 @@ function HomeContent() {
                   // 12px 圆角矩形（非胶囊）：收起态与展开态共用同一组上圆角，
                   // 展开时输入框这部分形状完全不发生变化，上下圆角也与下拉保持一致；
                   // 右侧与上下不留内边距，由搜索按钮拉伸填满、与搜索框边缘贴合
-                  'flex items-stretch min-h-12 pl-4 border',
+                  'cinema-search-box flex items-stretch min-h-12 pl-4 border',
                   'transition-[background-color,border-color,border-radius] duration-200',
                   searchHistory.visible
                     ? // 展开时：外框（含上圆角）沿用输入框的聚焦样式不变，只把底边改为内部分隔线，
@@ -213,10 +211,11 @@ function HomeContent() {
                     : 'rounded-xl border-line bg-chip focus-within:border-accent focus-within:ring-1 focus-within:ring-accent/40'
                 )}
               >
+                <Icon name="search" className="w-5 h-5 shrink-0 self-center mr-4" />
                 <input
                   ref={inputRef}
                   className="flex-1 min-w-0 pr-2 bg-transparent text-sm text-content placeholder:text-faint focus:outline-none"
-                  placeholder="输入影片名称..."
+                  placeholder="输入影片名称"
                   value={input}
                   maxLength={100}
                   onChange={(e) => {
@@ -260,7 +259,6 @@ function HomeContent() {
                     searchHistory.visible ? '!rounded-tr-xl !rounded-br-none' : '!rounded-r-xl'
                   )}
                 >
-                  <Icon name="search" className="w-4 h-4" />
                   搜索
                 </button>
               </div>
@@ -278,7 +276,10 @@ function HomeContent() {
               />
             )}
           </div>
+          </div>
         </section>
+
+        <div className="cinema-container cinema-content">
 
         {/* 搜索结果 */}
         {urlQuery && (
@@ -366,17 +367,20 @@ function HomeContent() {
         {/* 首页推荐（有搜索时隐藏） */}
         {!urlQuery && (
           <RecommendSection
+            onContinue={() => setHistoryOpen(true)}
             onPick={(title) => {
               setInput(title);
               runSearch(title);
             }}
           />
         )}
+        </div>
       </main>
 
       <SiteFooter />
 
       <DetailModal item={detailItem} onClose={() => setDetailItem(null)} />
+      <HistoryPanel open={historyOpen} onClose={() => setHistoryOpen(false)} />
     </div>
   );
 }
