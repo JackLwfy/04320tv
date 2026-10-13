@@ -45,7 +45,8 @@ describe('administrator configuration environment mapping', () => {
   });
   it('revisions detect managed changes while ignoring unrelated credentials', () => {
     const original = { NEXT_PUBLIC_SITE_NAME: 'one', PASSWORD: 'private-one' };
-    expect(configRevision(original)).toBe(configRevision({ ...original, PASSWORD: 'private-two' }));
+    expect(configRevision(original)).not.toBe(configRevision({ ...original, PASSWORD: 'private-two' }));
+    expect(configRevision(original)).toBe(configRevision({ ...original, EDGEONE_API_TOKEN: 'private-token' }));
     expect(configRevision(original)).not.toBe(configRevision({ ...original, NEXT_PUBLIC_SITE_NAME: 'two' }));
     expect(configRevision(original)).not.toBe(configRevision({ ...original, ADMIN_CONFIG_REVISION: 'new-revision' }));
   });

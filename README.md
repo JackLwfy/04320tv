@@ -6,6 +6,8 @@
 
 管理员认证与前台 `PASSWORD` 独立，使用服务端 scrypt 密码哈希和 8 小时 HttpOnly/SameSite=Strict 会话。后台写请求检查精确 Origin、字段白名单、体积和配置版本；不会向前端返回云端管理凭据。密码哈希或会话密钥变更后旧会话失效。
 
+后台「网站信息 → 网站访问密码 → 修改访问密码」可设置新的网站访问密码，留空保存则移除密码并允许公开访问。未进入密码编辑时，保存其他配置会保留现有密码；现有密码不回显，新密码也不会出现在变更预览中。保存并部署后生效，修改密码使原访问会话失效，管理员密码不受影响。
+
 仅在服务端配置 `ADMIN_PASSWORD_HASH`（32 位十六进制随机盐、冒号、scrypt 32 字节摘要的十六进制）、`ADMIN_SESSION_SECRET`、`ADMIN_ORIGIN`（例如 `https://04320.com`）、`EDGEONE_PROJECT_ID` 和 `EDGEONE_API_TOKEN`。不要加 `NEXT_PUBLIC_` 前缀，不要将真实凭据提交 Git。修改这些环境变量后需重新部署。
 
 后台固定操作 `JackLwfy/04320tv` 的 `main` 分支，写入前检查项目绑定，保留非管理字段和数据源附加字段。每类数据源序列化后最多 1000 字节；大量条目请使用订阅链接。新增或禁用的预置源会通过既有前台同步机制生效，已由访客保存的个人偏好仍然保留。保存与部署是两个步骤：配置保存后若构建失败，可以重新部署；“发布成功”需同时确认云端构建成功和当前生产节点加载新配置版本。
@@ -65,7 +67,7 @@ services:
     ports:
       - "8080:8080"
     environment:
-      - PASSWORD=change-me   # 必填：访问密码，务必修改
+      - PASSWORD=            # 可选：访问密码；默认公开访问
       # - PROXY_SECRET=your-secret          # 会话/代理签名密钥，多实例部署建议设置
       # - DEFAULT_SOURCES=[{"name":"示例源","url":"https://example.com/api.php/provide/vod"}]
       # - DEFAULT_LIVE_SOURCES=[{"name":"示例直播源","url":"https://example.com/list.m3u"}]
@@ -101,7 +103,7 @@ PASSWORD=your-password npm start   # 监听 8080
 
 | 变量 | 必填 | 说明 |
 | --- | --- | --- |
-| `PASSWORD` | 是 | 访问密码；未设置时站点会提示管理员配置 |
+| `PASSWORD` | 否 | 网站访问密码；留空或未设置时公开访问，后台仍独立认证 |
 | `PROXY_SECRET` | 否 | 会话/代理签名密钥；不设置时从 PASSWORD 派生（多实例部署建议显式设置） |
 | `DEFAULT_SOURCES` | 否 | 预置采集站（JSON 数组），用户端自动出现且默认勾选，详见[配置文档](https://libretv.is-an.org/wiki/Configuration.html) |
 | `REQUEST_TIMEOUT` | 否 | 代理上游请求超时（毫秒），默认 8000 |

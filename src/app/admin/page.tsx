@@ -18,7 +18,7 @@ const sections: { id: Section; label: string; icon: IconName; eyebrow: string; d
 ];
 type PublishState = 'review' | 'saving' | 'building' | 'verifying' | 'success' | 'failed';
 type RecordItem = { id: string; date: string; status: string; commit: string; message: string; branch: string };
-type Snapshot = { settings: Settings; revision: string; configuredRevision: string; deployedRevision: string };
+type Snapshot = { settings: Settings; accessPasswordConfigured: boolean; revision: string; configuredRevision: string; deployedRevision: string };
 const statusNames: Record<string, string> = { Success: '发布成功', Failed: '构建失败', Timeout: '构建超时', Cancelled: '已取消', Invalid: '部署无效', Expired: '历史部署' };
 async function request<T>(path: string, method = 'GET', body?: unknown): Promise<T> {
   const response = await fetch(`/api/admin/${path}`, { method, cache: 'no-store', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, ...(body !== undefined ? { body: JSON.stringify(body) } : {}), signal: AbortSignal.timeout(90000) });
@@ -91,6 +91,8 @@ export default function AdminPage() {
   const [newsletterState, setNewsletterState] = useState<NewsletterState>('form');
   const [draft, setDraft] = useState<Settings>(() => structuredClone(initialSettings));
   const [saved, setSaved] = useState<Settings>(() => structuredClone(initialSettings));
+  const [accessPassword, setAccessPassword] = useState<string | null>(null);
+  const [accessPasswordConfigured, setAccessPasswordConfigured] = useState(false);
   const [notice, setNotice] = useState('');
   const [sourceKind, setSourceKind] = useState<SourceKind>('vod');
   const [query, setQuery] = useState('');
@@ -106,10 +108,12 @@ export default function AdminPage() {
   const [records, setRecords] = useState<RecordItem[]>([]);
   const titleRef = useRef<HTMLHeadingElement>(null);
   const difference = changes(saved, draft);
+  const changeCount = difference.length + (accessPassword !== null ? 1 : 0);
   const active = sections.find((item) => item.id === section)!;
   const running = publish === 'saving' || publish === 'building' || publish === 'verifying';
   const needsDeployment = configuredRevision !== deployedRevision;
   const applySnapshot = useCallback((value: Snapshot) => {
+    setAccessPassword(null); setAccessPasswordConfigured(value.accessPasswordConfigured);
     setDraft(value.settings); setSaved(structuredClone(value.settings)); setRevision(value.revision);
     setConfiguredRevision(value.configuredRevision); setDeployedRevision(value.deployedRevision);
   }, []);
@@ -123,11 +127,11 @@ export default function AdminPage() {
   }, [load]);
 
   useEffect(() => {
-    if (!difference.length) return;
+    if (!changeCount) return;
     const handler = (e: BeforeUnloadEvent) => { e.preventDefault(); };
     window.addEventListener('beforeunload', handler);
     return () => window.removeEventListener('beforeunload', handler);
-  }, [difference.length]);
+  }, [changeCount]);
 
   useEffect(() => {
     if (!deploymentId) return;
@@ -156,7 +160,7 @@ export default function AdminPage() {
   async function publishChanges() {
     setPublish('saving'); setPublishMessage('正在保存配置并提交生产部署…');
     try {
-      const result = await request<Snapshot & { deploymentId?: string; deploymentError?: string }>('config', 'POST', { settings: draft, revision });
+      const result = await request<Snapshot & { deploymentId?: string; deploymentError?: string }>('config', 'POST', { settings: draft, revision, ...(accessPassword !== null ? { accessPassword } : {}) });
       applySnapshot(result);
       if (result.deploymentId) { setDeploymentId(result.deploymentId); setPublish('building'); }
       else { setPublish('failed'); setPublishMessage(result.deploymentError || '配置已保存，请刷新发布记录。'); }
@@ -176,15 +180,16 @@ export default function AdminPage() {
   function navigate(id: Section) { setSection(id); setNotice(''); requestAnimationFrame(() => titleRef.current?.focus()); if (id === 'history') void refreshHistory(); }
   async function refreshHistory() { try { const result = await request<{ records: RecordItem[]; deployedRevision: string }>('deployments'); setRecords(result.records); setDeployedRevision(result.deployedRevision); } catch (error) { setNotice(errorText(error)); } }
   function review() {
+    if (accessPassword !== null && (new TextEncoder().encode(accessPassword).length > 1000 || /[\x00-\x1f\x7f]/.test(accessPassword))) { setSection('site'); setNotice('网站访问密码不能超过 1000 字节或包含控制字符。'); return; }
     const invalid = validateSettings(draft);
     if (invalid) { setSection(invalid.section); setNotice(invalid.message); return; }
     setPublish('review');
   }
-  async function logout() { try { await request('session', 'DELETE'); setLoggedIn(false); setDraft(structuredClone(initialSettings)); setSaved(structuredClone(initialSettings)); setRecords([]); setSection('site'); setNotice(''); setDeploymentId(''); } catch (error) { setNotice(errorText(error)); } }
+  async function logout() { try { await request('session', 'DELETE'); setLoggedIn(false); setAccessPassword(null); setDraft(structuredClone(initialSettings)); setSaved(structuredClone(initialSettings)); setRecords([]); setSection('site'); setNotice(''); setDeploymentId(''); } catch (error) { setNotice(errorText(error)); } }
   function confirmAction() {
     if (confirm === 'logout') logout();
     else if (confirm === 'reload') { void load().catch(error => setNotice(errorText(error))); }
-    else if (confirm === 'discard') { setDraft(structuredClone(saved)); setNotice('已恢复到最近读取的云端配置。'); }
+    else if (confirm === 'discard') { setDraft(structuredClone(saved)); setAccessPassword(null); setNotice('已恢复到最近读取的云端配置。'); }
     else update('sources', draft.sources.filter((item) => item.id !== confirm));
     setConfirm(null);
   }
@@ -206,7 +211,7 @@ export default function AdminPage() {
       <div className={s.sidebarBottom}><span className={s.eyebrow}>BEHIND THE SCENES</span><p>在光影中，<br />管理更好的故事。</p><Link href="/">返回网站 <Icon name="link" /></Link></div>
     </aside>
     <div className={s.workspace}>
-      <header className={s.topbar}><span className={s.breadcrumb}>控制室 <span>/</span> {active.label}</span><div><span className={s.badge}>生产环境 · main</span><Link href="/" target="_blank" rel="noreferrer" className={s.visit}>访问网站 <Icon name="link" /></Link><button className={s.logout} onClick={() => difference.length ? setConfirm('logout') : logout()}>退出登录</button></div></header>
+      <header className={s.topbar}><span className={s.breadcrumb}>控制室 <span>/</span> {active.label}</span><div><span className={s.badge}>生产环境 · main</span><Link href="/" target="_blank" rel="noreferrer" className={s.visit}>访问网站 <Icon name="link" /></Link><button className={s.logout} onClick={() => changeCount ? setConfirm('logout') : logout()}>退出登录</button></div></header>
       <div className={s.previewNotice}><Icon name="alert" /><span>配置保存到 EdgeOne，完成构建后生效。关闭页面不会中断已提交的部署。</span></div>
       <main id="admin-content" className={s.main}>
         <div className={s.pageHeading}><span className={s.eyebrow}>{active.eyebrow} <span>/ 0{sections.findIndex((item) => item.id === section) + 1}</span></span><h1 tabIndex={-1} ref={titleRef}>{active.label}</h1><p>{active.description}</p></div>
@@ -221,6 +226,8 @@ export default function AdminPage() {
               <p className={s.footnote}>预览不会收集邮箱或发送邮件。前台收到订阅服务的受理响应后才显示“订阅请求已收到”；这不代表邮件已送达。</p>
             </>}
             {section === 'site' && <>
+              <div className={s.toggleRow}><div><h3>网站访问密码<span className={s.scope}>全站设置</span></h3><p>{accessPasswordConfigured ? '已设置访问密码，现有密码不会回显。' : '无需密码，访客可直接访问。'} 管理员登录密码不受影响。</p></div><button className={s.secondary} disabled={running} onClick={() => setAccessPassword(accessPassword === null ? '' : null)}>{accessPassword === null ? '修改访问密码' : '取消密码修改'}</button></div>
+              {accessPassword !== null && <label className={s.field}>新的网站访问密码<input type="password" autoComplete="new-password" value={accessPassword} onChange={e => setAccessPassword(e.target.value)} maxLength={1000} placeholder="留空则移除访问密码" disabled={running} /><span className={s.footnote}>{accessPassword === '' ? '保存并部署后将移除访问密码，所有访客均可直接访问。' : '保存并部署后新密码生效，原有访问会话将失效。'}</span></label>}
               {(['name', 'subtitle', 'description', 'announcement'] as const).map((key) => <label className={s.field} key={key}><span className={s.fieldLabel}>{labels[key]}{key === 'name' && <small>必填</small>}</span><span className={s.inputWrap}>{key === 'description' || key === 'announcement' ? <textarea rows={key === 'announcement' ? 3 : 2} maxLength={200} value={draft[key]} onChange={(e) => update(key, e.target.value)} /> : <input maxLength={50} value={draft[key]} onChange={(e) => update(key, e.target.value)} required={key === 'name'} />}<span className={s.counter}>{draft[key].length}/{key === 'name' || key === 'subtitle' ? 50 : 200}</span></span></label>)}
               <fieldset className={s.logoField}><legend>Logo 样式</legend><div className={s.logoOptions}>{(['a', 'b', 'c'] as const).map((value) => <label key={value} className={draft.logo === value ? s.logoSelected : ''}><input type="radio" name="logo" checked={draft.logo === value} onChange={() => update('logo', value)} /><Image src={`/brand/${value}/logo-dark.svg`} alt={describeValue(value)} width={150} height={36} /><span>{describeValue(value)}</span></label>)}</div></fieldset>
             </>}
@@ -243,13 +250,13 @@ export default function AdminPage() {
           <aside className={s.preview} aria-label="网站预览"><h2>{section === 'history' ? '每一步，都有迹可循。' : '网站预览'}</h2><p>随编辑即时变化，仅供视觉参考。</p><div className={s.previewWindow}><div className={s.previewNav}><Image src={`/brand/${draft.logo}/logo-dark.svg`} alt="网站 Logo 预览" width={120} height={34} /><Icon name="search" /></div><div className={s.previewArt}><Image src="/images/cinema-coast.webp" alt="灯塔海岸首页预览" fill sizes="320px" /><div><span>{draft.subtitle || '光影之间'}</span><h3>把今晚，<br />交给好故事。</h3><p>{draft.announcement || '有些故事，仍在等你。'}</p></div></div><div className={s.previewInfo}><strong>{draft.name || '网站名称'}</strong><p>{draft.description || '网站简介将显示在这里。'}</p><div><span>发现</span>{draft.live && <span>直播</span>}{draft.settings && <span>设置</span>}</div></div></div><div className={s.previewTip}><span className={s.eyebrow}>A NOTE ON PUBLISHING</span><p>好的改变，值得确认。<br />检查变更，再让它与观众见面。</p><span>保存并部署后更新线上网站。</span></div></aside>
         </div>
       </main>
-      <footer className={s.savebar}><div className={s.saveStatus}><Icon name={difference.length || needsDeployment ? 'clock' : 'check'} /><div><strong>{difference.length ? `${difference.length} 项未保存变更` : needsDeployment ? '配置已保存，等待部署生效' : '云端配置已同步'}</strong><small>{difference.length ? '确认变更后，保存并发布到线上。' : '修改配置后需要重新构建，通常需要几分钟。'}</small></div></div><div className={s.saveActions}><button className={s.secondary} disabled={!difference.length || running} onClick={() => setConfirm('discard')}>放弃修改</button><button className={s.primary} disabled={running || (!difference.length && !needsDeployment)} onClick={difference.length ? review : retryDeployment}>{difference.length ? '保存并部署' : needsDeployment ? '继续发布' : '保存并部署'}<Icon name="arrowDown" className={s.arrow} /></button></div></footer>
+      <footer className={s.savebar}><div className={s.saveStatus}><Icon name={changeCount || needsDeployment ? 'clock' : 'check'} /><div><strong>{changeCount ? `${changeCount} 项未保存变更` : needsDeployment ? '配置已保存，等待部署生效' : '云端配置已同步'}</strong><small>{changeCount ? '确认变更后，保存并发布到线上。' : '修改配置后需要重新构建，通常需要几分钟。'}</small></div></div><div className={s.saveActions}><button className={s.secondary} disabled={!changeCount || running} onClick={() => setConfirm('discard')}>放弃修改</button><button className={s.primary} disabled={running || (!changeCount && !needsDeployment)} onClick={changeCount ? review : retryDeployment}>{changeCount ? '保存并部署' : needsDeployment ? '继续发布' : '保存并部署'}<Icon name="arrowDown" className={s.arrow} /></button></div></footer>
     </div>
     {confirm && <Modal title={confirm === 'discard' ? '放弃这次修改？' : confirm === 'logout' ? '退出控制室？' : confirm === 'reload' ? '重新读取云端配置？' : '移除这个数据源？'} onClose={() => setConfirm(null)}><p className={s.modalDescription}>{confirm === 'logout' ? '未保存的修改将丢失，已提交的部署会继续执行。' : confirm === 'reload' ? '将丢弃本页尚未保存的修改，并载入当前云端配置。' : confirm === 'discard' ? '恢复到最近读取的云端内容，不会修改线上配置。' : '保存并部署后，此来源将从网站预置数据源中移除。'}</p><div className={s.modalActions}><button className={s.secondary} onClick={() => setConfirm(null)} autoFocus>继续编辑</button><button className={s.primary} onClick={confirmAction}>确认{confirm === 'logout' ? '退出' : confirm === 'discard' ? '放弃' : confirm === 'reload' ? '读取' : '移除'}</button></div></Modal>}
     {publish && <Modal title={publish === 'success' ? '这次调整，已正式上线。' : publish === 'failed' ? '发布暂未完成' : '让改变，正式开场。'} busy={running} onClose={() => setPublish(null)}>
       <p className={s.modalDescription}>生产发布 · 先保存配置，再由 EdgeOne 重新构建网站。</p>
-      {publish === 'review' && <><div className={s.diffList}>{difference.map(key => <div key={key}><strong>{labels[key]}</strong><span><small>修改前</small>{describeValue(saved[key])}</span><span className={s.newValue}><small>修改后</small>{describeValue(draft[key])}</span></div>)}</div><p className={s.footnote}>变更统计按配置项计算。目标网站：04320.com，部署分支：main。</p><div className={s.modalActions}><button className={s.secondary} onClick={() => setPublish(null)}>返回编辑</button><button className={s.primary} onClick={publishChanges}>确认保存并部署<Icon name="arrowDown" className={s.arrow} /></button></div></>}
-      {publish !== 'review' && <><ol className={s.steps} aria-label="发布进度">{(['保存配置', '构建部署', '核对生效'] as const).map((label, index) => { const current = publish === 'saving' ? 0 : publish === 'building' ? 1 : publish === 'verifying' ? 2 : publish === 'success' ? 3 : -1; return <li key={label} className={index < current ? s.stepDone : index === current ? s.stepActive : ''}><span>{index < current ? <Icon name="check" /> : `0${index + 1}`}</span><div><strong>{label}</strong><small>{index < current ? '已完成' : index === current ? '正在处理…' : publish === 'failed' ? '请查看下方结果' : '等待上一步完成'}</small></div></li>; })}</ol><div role="status" aria-live="polite" className={publish === 'failed' ? s.error : s.publishStatus}>{publishMessage}</div>{!running && <div className={s.modalActions}><button className={s.secondary} onClick={() => setPublish(null)}>返回管理界面</button>{publish === 'failed' && needsDeployment && !difference.length ? <button className={s.primary} onClick={retryDeployment}>重新部署</button> : <button className={s.primary} onClick={() => { setPublish(null); navigate('history'); }}>查看发布记录</button>}</div>}</>}
+      {publish === 'review' && <><div className={s.diffList}>{accessPassword !== null && <div><strong>网站访问密码</strong><span><small>修改前</small>{accessPasswordConfigured ? '已设置' : '无需密码'}</span><span className={s.newValue}><small>修改后</small>{accessPassword === '' ? '移除密码，开放访问' : '设置新密码（不显示内容）'}</span></div>}{difference.map(key => <div key={key}><strong>{labels[key]}</strong><span><small>修改前</small>{describeValue(saved[key])}</span><span className={s.newValue}><small>修改后</small>{describeValue(draft[key])}</span></div>)}</div><p className={s.footnote}>变更统计按配置项计算。目标网站：04320.com，部署分支：main。</p><div className={s.modalActions}><button className={s.secondary} onClick={() => setPublish(null)}>返回编辑</button><button className={s.primary} onClick={publishChanges}>确认保存并部署<Icon name="arrowDown" className={s.arrow} /></button></div></>}
+      {publish !== 'review' && <><ol className={s.steps} aria-label="发布进度">{(['保存配置', '构建部署', '核对生效'] as const).map((label, index) => { const current = publish === 'saving' ? 0 : publish === 'building' ? 1 : publish === 'verifying' ? 2 : publish === 'success' ? 3 : -1; return <li key={label} className={index < current ? s.stepDone : index === current ? s.stepActive : ''}><span>{index < current ? <Icon name="check" /> : `0${index + 1}`}</span><div><strong>{label}</strong><small>{index < current ? '已完成' : index === current ? '正在处理…' : publish === 'failed' ? '请查看下方结果' : '等待上一步完成'}</small></div></li>; })}</ol><div role="status" aria-live="polite" className={publish === 'failed' ? s.error : s.publishStatus}>{publishMessage}</div>{!running && <div className={s.modalActions}><button className={s.secondary} onClick={() => setPublish(null)}>返回管理界面</button>{publish === 'failed' && needsDeployment && !changeCount ? <button className={s.primary} onClick={retryDeployment}>重新部署</button> : <button className={s.primary} onClick={() => { setPublish(null); navigate('history'); }}>查看发布记录</button>}</div>}</>}
     </Modal>}
   </div>;
 }

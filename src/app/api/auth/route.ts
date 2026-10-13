@@ -5,10 +5,7 @@ export const runtime = 'nodejs';
 
 export async function POST(req: Request) {
   if (!isPasswordConfigured()) {
-    return NextResponse.json(
-      { success: false, error: '服务器未设置 PASSWORD 环境变量，请联系管理员配置' },
-      { status: 503 }
-    );
+    return NextResponse.json({ success: true });
   }
 
   const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || req.headers.get('x-real-ip') || 'unknown';
@@ -21,8 +18,9 @@ export async function POST(req: Request) {
 
   let password = '';
   try {
-    const body = (await req.json()) as { password?: string };
-    password = String(body.password ?? '');
+    const body = await req.json();
+    if (typeof body?.password !== 'string' || Buffer.byteLength(body.password, 'utf8') > 1000) throw new Error('Invalid password');
+    password = body.password;
   } catch {
     return NextResponse.json({ success: false, error: '请求格式错误' }, { status: 400 });
   }
@@ -53,8 +51,8 @@ export async function POST(req: Request) {
 
 /** GET：查询当前会话状态 */
 export async function GET(req: Request) {
-  const verified = sessionFromCookieHeader(req.headers.get('cookie'));
-  return NextResponse.json({ success: true, verified });
+  const verified = !isPasswordConfigured() || sessionFromCookieHeader(req.headers.get('cookie'));
+  return NextResponse.json({ success: true, verified }, { headers: { 'Cache-Control': 'no-store' } });
 }
 
 /** DELETE：登出 */

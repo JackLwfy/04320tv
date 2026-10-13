@@ -30,7 +30,11 @@ export async function readCloudEnv() {
   return { entries: result.EnvVars, values: Object.fromEntries(result.EnvVars.map(v => [v.Key, v.Value])) as Env };
 }
 export async function writeCloudEnv(values: Env, entries: CloudEnv[]) {
-  await edgeone('ModifyPagesProjectEnvs', { ProjectId: projectId(), EnvVars: Object.entries(values).map(([Key, Value]) => ({ ...entries.find(e => e.Key === Key), Key, Value })) });
+  const updates = Object.entries(values).filter(([key, value]) => key !== 'PASSWORD' || value !== '');
+  if (updates.length) await edgeone('ModifyPagesProjectEnvs', { ProjectId: projectId(), EnvVars: updates.map(([Key, Value]) => ({ ...entries.find(e => e.Key === Key), Key, Value })) });
+  // EdgeOne 不接受空值，移除变量才表示公开访问。
+  const password = entries.find(e => e.Key === 'PASSWORD');
+  if (values.PASSWORD === '' && password) await edgeone('DeletePagesProjectEnvs', { ProjectId: projectId(), EnvVars: [password] });
 }
 export async function deployments() {
   const result = await edgeone<{ Deployments: Deployment[] }>('DescribePagesDeployments', { ProjectId: projectId(), Offset: 0, Limit: 10, OrderBy: 'CreatedOn', OrderType: 'Desc' });

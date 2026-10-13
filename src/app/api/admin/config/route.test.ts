@@ -38,6 +38,35 @@ beforeEach(() => {
 afterEach(() => { vi.unstubAllEnvs(); });
 
 describe('administrator configuration API', () => {
+  it('changes and removes the access password only when explicitly submitted, without echoing it', async () => {
+    const changed = await POST(request({ ...draft(), accessPassword: 'new-private-access' }));
+    expect(changed.status).toBe(200);
+    const snapshot = await changed.json();
+    expect(cloud.PASSWORD).toBe('new-private-access');
+    expect(snapshot.accessPasswordConfigured).toBe(true);
+    expect(JSON.stringify(snapshot)).not.toContain('new-private-access');
+    expect(JSON.stringify(await (await GET(request())).json())).not.toContain('new-private-access');
+    const removed = await POST(request({ ...draft(), accessPassword: '' }));
+    expect(removed.status).toBe(200);
+    expect(cloud.PASSWORD).toBe('');
+    expect((await removed.json()).accessPasswordConfigured).toBe(false);
+  });
+  it('rejects invalid password inputs and detects external password changes', async () => {
+    for (const accessPassword of [null, 123, 'x\n', '密'.repeat(334)]) {
+      expect((await POST(request({ ...draft(), accessPassword }))).status).toBe(400);
+    }
+    const stale = draft();
+    cloud.PASSWORD = 'changed-outside';
+    expect((await POST(request({ ...stale, accessPassword: '' }))).status).toBe(409);
+    expect(writeCloudEnv).not.toHaveBeenCalled();
+  });
+  it('accepts password removal when the platform deletes the variable', async () => {
+    vi.mocked(writeCloudEnv).mockImplementation(async (values) => { cloud = { ...cloud, ...values }; delete cloud.PASSWORD; });
+    const response = await POST(request({ ...draft(), accessPassword: '' }));
+    expect(response.status).toBe(200);
+    expect((await response.json()).accessPasswordConfigured).toBe(false);
+    expect(triggerDeployment).toHaveBeenCalledOnce();
+  });
   it('rejects unauthenticated reads and writes without contacting the cloud', async () => {
     expect((await GET(request(undefined, false))).status).toBe(401);
     expect((await POST(request(draft(), false))).status).toBe(401);

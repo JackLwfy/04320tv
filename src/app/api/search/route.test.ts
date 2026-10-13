@@ -123,13 +123,13 @@ describe('POST /api/search', () => {
     expect(lines[lines.length - 1].type).toBe('done');
   });
 
-  it('未登录返回 401，未配置密码返回 503', async () => {
-    vi.stubGlobal('fetch', vi.fn());
+  it('有密码未登录返回 401，空密码允许公开搜索', async () => {
+    mockUpstream();
     const saved = process.env.PASSWORD;
     delete process.env.PASSWORD;
     try {
-      const noPassword = await POST(makeRequest({ wd: 'x', sources: SOURCES }));
-      expect(noPassword.status).toBe(503);
+      const noPassword = await POST(new Request('https://local.test/api/search', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ wd: 'x', sources: SOURCES }) }));
+      expect(noPassword.status).toBe(200);
     } finally {
       process.env.PASSWORD = saved;
     }

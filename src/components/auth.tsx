@@ -10,18 +10,14 @@ import { useToast } from './toast';
 /**
  * 认证上下文：
  * - 页面加载时查询 /api/status 判断会话有效性；
- * - 任何 API 返回 401/503 时全局打开登录框（客户端 API 层统一触发，不再散落检查）。
+ * - API 返回 401 时全局打开登录框；空密码公开访问。
  */
-
-type SetupRequired = boolean;
 
 interface AuthContextValue {
   settingsEnabled: boolean;
   liveEnabled: boolean;
   checked: boolean;
   verified: boolean;
-  /** 服务器未设置 PASSWORD，需要管理员配置 */
-  setupRequired: SetupRequired;
   /** /api/status 返回的应用版本（构建时从 package.json 注入） */
   version: string | null;
   openLogin: () => void;
@@ -33,7 +29,6 @@ const AuthContext = createContext<AuthContextValue>({
   liveEnabled: false,
   checked: false,
   verified: false,
-  setupRequired: false,
   version: null,
   openLogin: () => {},
   logout: async () => {},
@@ -48,7 +43,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [liveEnabled, setLiveEnabled] = useState(false);
   const [checked, setChecked] = useState(false);
   const [verified, setVerified] = useState(false);
-  const [setupRequired, setSetupRequired] = useState(false);
+  const [passwordRequired, setPasswordRequired] = useState(true);
   const [version, setVersion] = useState<string | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const { toast } = useToast();
@@ -62,7 +57,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .then((s) => {
         if (cancelled) return;
         setVerified(s.verified);
-        setSetupRequired(!s.passwordRequired);
+        setPasswordRequired(s.passwordRequired);
         setVersion(s.version);
         setLiveEnabled(s.liveEnabled === true);
         setSettingsEnabled(s.settingsEnabled === true);
@@ -78,29 +73,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(
     () =>
-      onUnauthorized((event) => {
-        const setup = (event as CustomEvent).detail === 'setup';
-        setSetupRequired(setup);
+      onUnauthorized(() => {
+        setPasswordRequired(true);
         setVerified(false);
         setModalOpen(true);
       }),
     []
   );
 
-  const openLogin = useCallback(() => setModalOpen(true), []);
+  const openLogin = useCallback(() => { if (passwordRequired) setModalOpen(true); }, [passwordRequired]);
 
   const logout = useCallback(async () => {
     try {
       await api.logout();
     } finally {
-      setVerified(false);
+      setVerified(!passwordRequired);
       toast('已退出登录', 'info');
     }
-  }, [toast]);
+  }, [toast, passwordRequired]);
 
   const handleLoginSuccess = useCallback(async () => {
     setVerified(true);
-    setSetupRequired(false);
     setModalOpen(false);
     // 登录前以 401 失败的查询（如豆瓣推荐）需要重新拉取
     queryClient.invalidateQueries();
@@ -123,11 +116,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [toast, queryClient]);
 
   return (
-    <AuthContext.Provider value={{ checked, verified, setupRequired, version, liveEnabled, settingsEnabled, openLogin, logout }}>
+    <AuthContext.Provider value={{ checked, verified, version, liveEnabled, settingsEnabled, openLogin, logout }}>
       {children}
       {modalOpen && (
         <LoginModal
-          setupRequired={setupRequired}
           onSuccess={handleLoginSuccess}
           onClose={() => setModalOpen(false)}
         />
@@ -137,11 +129,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 }
 
 function LoginModal({
-  setupRequired,
   onSuccess,
   onClose,
 }: {
-  setupRequired: boolean;
   onSuccess: () => void;
   onClose: () => void;
 }) {
@@ -190,17 +180,8 @@ function LoginModal({
         className="bg-surface-raised rounded-xl p-6 w-full max-w-sm mx-4 shadow-2xl"
         role="dialog"
         aria-modal="true"
-        aria-label={setupRequired ? '需要配置密码' : '访问验证'}
+        aria-label="访问验证"
       >
-        {setupRequired ? (
-          <>
-            <h2 className="text-lg font-semibold text-content mb-3">需要配置密码</h2>
-            <p className="text-sm text-muted leading-relaxed">
-              为确保安全，必须设置 <code className="text-accent">PASSWORD</code> 环境变量才能使用本服务。
-              请联系管理员在部署配置中添加该变量后重启服务。
-            </p>
-          </>
-        ) : (
           <>
             <h2 className="text-lg font-semibold text-content mb-1">访问验证</h2>
             <p className="text-sm text-muted mb-4">请输入密码继续访问</p>
@@ -225,7 +206,6 @@ function LoginModal({
               </button>
             </form>
           </>
-        )}
       </div>
     </div>
   );

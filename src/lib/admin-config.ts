@@ -8,8 +8,13 @@ export const settingKeys = {
   recommendSource: 'DEFAULT_RECOMMEND_SOURCE', imageMode: 'DEFAULT_IMAGE_MODE', autoplay: 'NEXT_PUBLIC_DEFAULT_AUTOPLAY', adFilter: 'NEXT_PUBLIC_DEFAULT_AD_FILTER', adultFilter: 'NEXT_PUBLIC_DEFAULT_ADULT_FILTER',
 } as const;
 export const sourceKeys = { vod: 'DEFAULT_SOURCES', live: 'DEFAULT_LIVE_SOURCES', subscription: 'DEFAULT_SUBSCRIPTIONS' } as const;
-export const managedKeys = [...Object.values(settingKeys), ...Object.values(sourceKeys), 'ADMIN_CONFIG_REVISION'];
+export const managedKeys = [...Object.values(settingKeys), ...Object.values(sourceKeys), 'ADMIN_CONFIG_REVISION', 'PASSWORD'];
 export type Env = Record<string, string>;
+export function accessPasswordUpdate(value: unknown): Env {
+  if (value === undefined) return {};
+  if (typeof value !== 'string' || Buffer.byteLength(value, 'utf8') > 1000 || /[\x00-\x1f\x7f]/.test(value)) throw new Error('网站访问密码须为不超过 1000 字节且不含控制字符的文本。');
+  return { PASSWORD: value };
+}
 function rawSources(env: Env, kind: SourceKind): Record<string, unknown>[] {
   const value = env[sourceKeys[kind]];
   if (!value) return [];

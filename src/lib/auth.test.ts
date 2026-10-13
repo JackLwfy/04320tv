@@ -57,6 +57,15 @@ describe('signSession / verifySession', () => {
     expect(verifySession('.sig')).toBe(false);
     expect(verifySession('abc.not-hex-sig')).toBe(false);
   });
+  it('修改密码后旧会话失效，即使 PROXY_SECRET 未改变', () => {
+    vi.stubEnv('PROXY_SECRET', 'test-fixed-proxy-secret');
+    const { token } = signSession();
+    vi.stubEnv('PASSWORD', 'test-new-password');
+    try {
+      expect(verifySession(token)).toBe(false);
+      expect(verifySession(signSession().token)).toBe(true);
+    } finally { vi.unstubAllEnvs(); }
+  });
 });
 
 describe('checkPassword', () => {
@@ -93,6 +102,7 @@ describe('sessionFromCookieHeader', () => {
     expect(sessionFromCookieHeader('')).toBe(false);
     expect(sessionFromCookieHeader(`other=1`)).toBe(false);
     expect(sessionFromCookieHeader(`${SESSION_COOKIE}=${token}x`)).toBe(false);
+    expect(sessionFromCookieHeader(`${SESSION_COOKIE}=%invalid`)).toBe(false);
   });
 });
 
