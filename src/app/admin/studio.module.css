@@ -280,3 +280,12 @@
 @media (max-width: 960px) { .cloudTools { max-width: none; } }
 @media (max-width: 360px) { .previewTag { display: none; } .topbar > div { gap: 10px; } .logout { padding-left: 10px; } .saveActions .primary { gap: 8px; padding-inline: 12px; } }
 @media (prefers-reduced-motion: reduce) { .studio *, .studio *::before, .studio *::after { transition: none !important; scroll-behavior: auto !important; } }
+.newsletterChoices { border: 0; margin: 28px 0; padding: 0; display: grid; gap: 16px; }
+.newsletterChoices legend { font-size: 15px; margin-bottom: 16px; }
+.newsletterChoices label { position: relative; display: grid; gap: 8px; padding: 14px; border: 1px solid #414c40; border-radius: 8px; cursor: pointer; }
+.newsletterChoices label:focus-within { outline: 2px solid #e1ea9b; outline-offset: 3px; }
+.newsletterChoices label.newsletterSelected { border-color: #e1ea9b; background: #222b20; }
+.newsletterChoices input { position: absolute; top: 24px; right: 24px; accent-color: #e1ea9b; width: 20px; height: 20px; }
+.newsletterChoices img { width: 100%; height: auto; border-radius: 4px; }
+.newsletterChoices strong { font-size: 17px; }
+.newsletterChoices span { font-size: 13px; color: #b3bbad; }

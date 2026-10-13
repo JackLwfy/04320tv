@@ -6,6 +6,7 @@ import { useCallback, useEffect, useRef, useState, type FormEvent, type ReactNod
 import { Icon, type IconName } from '@/components/icon';
 import { changes, describeValue, initialSettings, labels, validateSettings, type Section, type Settings, type SourceKind } from '@/lib/admin-settings';
 import s from './studio.module.css';
+import { NewsletterDialog, type NewsletterState } from '@/components/newsletter-dialog';
 
 const sections: { id: Section; label: string; icon: IconName; eyebrow: string; description: string }[] = [
   { id: 'site', label: '网站信息', icon: 'gear', eyebrow: 'THE IDENTITY', description: '让每一次相遇，都从一个好印象开始。' },
@@ -13,6 +14,7 @@ const sections: { id: Section; label: string; icon: IconName; eyebrow: string; d
   { id: 'sources', label: '数据源', icon: 'link', eyebrow: 'THE COLLECTION', description: '整理内容的入口，让故事有迹可循。' },
   { id: 'playback', label: '播放偏好', icon: 'bolt', eyebrow: 'THE DETAILS', description: '从封面到片尾，照顾每一个观影细节。' },
   { id: 'history', label: '发布记录', icon: 'clock', eyebrow: 'THE RELEASES', description: '每一次调整，都留下清晰的记录。' },
+  { id: 'newsletter', label: '邮件订阅', icon: 'link', eyebrow: 'LETTERS FROM CINEMA', description: '选一种方式，把下一段好故事寄给观众。' },
 ];
 type PublishState = 'review' | 'saving' | 'building' | 'verifying' | 'success' | 'failed';
 type RecordItem = { id: string; date: string; status: string; commit: string; message: string; branch: string };
@@ -85,6 +87,8 @@ function Login({ onLogin }: { onLogin: () => Promise<void> }) {
 export default function AdminPage() {
   const [loggedIn, setLoggedIn] = useState(false);
   const [section, setSection] = useState<Section>('site');
+  const [newsletterPreview, setNewsletterPreview] = useState(false);
+  const [newsletterState, setNewsletterState] = useState<NewsletterState>('form');
   const [draft, setDraft] = useState<Settings>(() => structuredClone(initialSettings));
   const [saved, setSaved] = useState<Settings>(() => structuredClone(initialSettings));
   const [notice, setNotice] = useState('');
@@ -187,7 +191,7 @@ export default function AdminPage() {
   function sourceUpdate(id: string, key: 'name' | 'url' | 'enabled', value: string | boolean) {
     update('sources', draft.sources.map((item) => item.id === id ? { ...item, [key]: value } : item));
   }
-  function toggle(key: 'live' | 'settings' | 'recommendations' | 'autoplay' | 'adFilter' | 'adultFilter', description: string, global = false) {
+  function toggle(key: 'live' | 'settings' | 'recommendations' | 'autoplay' | 'adFilter' | 'adultFilter' | 'newsletterEnabled', description: string, global = false) {
     return <div className={s.toggleRow}><div><h3>{labels[key]}<span className={s.scope}>{global ? '全站设置' : '默认偏好'}</span></h3><p>{description}</p></div><button role="switch" aria-checked={draft[key]} aria-label={labels[key]} className={`${s.switch} ${draft[key] ? s.on : ''}`} onClick={() => update(key, !draft[key])}><span /></button></div>;
   }
 
@@ -195,6 +199,7 @@ export default function AdminPage() {
   if (!loggedIn) return <><Login onLogin={load} />{loadError && <div className={s.error} role="alert">{loadError}</div>}</>;
 
   return <div className={s.studio}>
+    {newsletterPreview && <NewsletterDialog style={draft.newsletterStyle} previewState={newsletterState} onClose={() => setNewsletterPreview(false)} />}
     <a href="#admin-content" className={s.skipLink}>跳到配置内容</a>
     <aside className={s.sidebar}><div className={s.sidebarBrand}><Brand /><span className={s.previewTag}>网站管理</span></div>
       <nav aria-label="后台栏目">{sections.map((item) => <button key={item.id} className={`${s.navItem} ${section === item.id ? s.selected : ''}`} aria-current={section === item.id ? 'page' : undefined} onClick={() => navigate(item.id)}><Icon name={item.icon} /><span>{item.label}</span>{item.id === 'history' && records.length > 0 && <small>{records.length}</small>}</button>)}</nav>
@@ -208,6 +213,13 @@ export default function AdminPage() {
         {notice && <div className={s.notice} role="status"><Icon name="alert" />{notice}</div>}<div className={s.cloudTools}><span>04320.com · EdgeOne</span><button className={s.secondary} disabled={running} onClick={() => setConfirm('reload')}>重新读取配置</button></div>
         <div className={s.contentGrid}>
           <section className={s.editor} aria-label={active.label}>
+            {section === 'newsletter' && <>
+              {toggle('newsletterEnabled', '在网站页脚显示“订阅光影来信”，由访客主动打开弹窗。', true)}
+              <fieldset className={s.newsletterChoices}><legend>弹窗样式</legend>{([['lighthouse', '灯塔来信', '海岸画面与表单并列，延续首页的电影感。'], ['ticket', '电影票根', '用一张票根，邀请观众加入光影来信。'], ['minimal', '极简片尾', '收起图片，用文字和留白聚焦订阅。']] as const).map(([value, title, description]) => <label key={value} className={draft.newsletterStyle === value ? s.newsletterSelected : ''}><input type="radio" name="newsletter-style" checked={draft.newsletterStyle === value} onChange={() => update('newsletterStyle', value)} /><Image src={`/images/newsletter-${value}.png`} alt={`${title}设计参考`} width={480} height={320} /><strong>{title}</strong><span>{description}</span></label>)}</fieldset>
+              <label className={s.field}>预览状态<select value={newsletterState} onChange={e => setNewsletterState(e.target.value as NewsletterState)}><option value="form">填写邮箱</option><option value="submitting">正在提交</option><option value="accepted">已收到订阅请求（当前接口）</option><option value="error">提交失败</option><option value="unavailable">服务暂未开放</option></select></label>
+              <button className={s.primary} onClick={() => setNewsletterPreview(true)}>预览所选弹窗<Icon name="link" /></button>
+              <p className={s.footnote}>预览不会收集邮箱或发送邮件。前台收到订阅服务的受理响应后才显示“订阅请求已收到”；这不代表邮件已送达。</p>
+            </>}
             {section === 'site' && <>
               {(['name', 'subtitle', 'description', 'announcement'] as const).map((key) => <label className={s.field} key={key}><span className={s.fieldLabel}>{labels[key]}{key === 'name' && <small>必填</small>}</span><span className={s.inputWrap}>{key === 'description' || key === 'announcement' ? <textarea rows={key === 'announcement' ? 3 : 2} maxLength={200} value={draft[key]} onChange={(e) => update(key, e.target.value)} /> : <input maxLength={50} value={draft[key]} onChange={(e) => update(key, e.target.value)} required={key === 'name'} />}<span className={s.counter}>{draft[key].length}/{key === 'name' || key === 'subtitle' ? 50 : 200}</span></span></label>)}
               <fieldset className={s.logoField}><legend>Logo 样式</legend><div className={s.logoOptions}>{(['a', 'b', 'c'] as const).map((value) => <label key={value} className={draft.logo === value ? s.logoSelected : ''}><input type="radio" name="logo" checked={draft.logo === value} onChange={() => update('logo', value)} /><Image src={`/brand/${value}/logo-dark.svg`} alt={describeValue(value)} width={150} height={36} /><span>{describeValue(value)}</span></label>)}</div></fieldset>

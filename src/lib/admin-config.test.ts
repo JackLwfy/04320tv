@@ -3,6 +3,14 @@ import { configRevision, managedKeys, settingsFromEnv, settingsToEnv } from './a
 import { initialSettings } from './admin-settings';
 
 describe('administrator configuration environment mapping', () => {
+  it('round trips all newsletter themes and defaults the new entry to disabled', () => {
+    expect(settingsFromEnv({})).toMatchObject({ newsletterEnabled: false, newsletterStyle: 'lighthouse' });
+    for (const newsletterStyle of ['lighthouse', 'ticket', 'minimal'] as const) {
+      const result = settingsToEnv({ ...initialSettings, newsletterEnabled: true, newsletterStyle }, {});
+      expect(settingsFromEnv(result)).toMatchObject({ newsletterEnabled: true, newsletterStyle });
+    }
+    expect(() => settingsToEnv({ ...initialSettings, newsletterStyle: 'other' }, {})).toThrow();
+  });
   it('writes only the managed whitelist and never copies credential fields', () => {
     const result = settingsToEnv({ ...initialSettings, ADMIN_PASSWORD_HASH: 'injected', PASSWORD: 'injected', arbitrary: 'injected' }, { PASSWORD: 'private', ADMIN_SESSION_SECRET: 'private', UNRELATED_SETTING: 'keep' });
     expect(Object.keys(result).every(key => managedKeys.includes(key))).toBe(true);

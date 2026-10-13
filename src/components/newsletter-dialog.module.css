@@ -1,0 +1,51 @@
+.overlay { position: fixed; inset: 0; z-index: 110; display: flex; align-items: center; justify-content: center; padding: 28px; background: rgb(5 10 8 / 82%); backdrop-filter: blur(12px); overflow-y: auto; }
+.dialog { --ink: #f2f0e4; --muted: #b7beac; --lime: #e2ed9f; position: relative; display: flex; width: 900px; max-width: 100%; max-height: calc(100dvh - 56px); overflow-y: auto; border: 1px solid #606c59; border-radius: 10px; color: var(--ink); background: #111c16; box-shadow: 0 32px 100px #0009; outline: none; animation: arrive .24s ease-out; color-scheme: dark; }
+.dialog button, .dialog input { font: inherit; }
+.dialog button { cursor: pointer; }.dialog button:disabled { cursor: default; }
+.dialog button:focus-visible, .dialog input:focus-visible { outline: 2px solid var(--lime); outline-offset: 4px; }
+.close { position: absolute; top: 15px; right: 15px; z-index: 2; width: 36px; height: 36px; display: grid; place-items: center; border-radius: 4px; background: transparent; color: #e4ebdc; border: 0; }
+.close:hover { background: #6a826733; }.close svg { width: 24px; height: 24px; }
+.coast { position: relative; width: 41%; flex-shrink: 0; min-height: 510px; display: flex; align-items: flex-end; padding: 26px; background: linear-gradient(0deg, #07150fcc, #0b201200 38%), url('/images/cinema-coast.webp') right center / cover; }
+.imageCaption { font-family: 'Songti SC', 'SimSun', serif; color: #f0efe1; font-size: 12px; letter-spacing: 4px; }
+.content { flex: 1; min-width: 0; padding: 39px 40px 36px; }
+.eyebrow { display: flex; flex-direction: column; align-items: flex-start; gap: 15px; font-family: Georgia, serif; font-size: 15px; letter-spacing: 5px; color: #e9eadb; }
+.eyebrow > span { width: 34px; height: 1px; background: #b9ca8f; }
+.title { margin: 29px 0 15px; font-family: 'Songti SC', 'Noto Serif SC', 'SimSun', serif; font-size: 42px; font-weight: 400; line-height: 1.5; letter-spacing: 1px; white-space: pre-line; text-wrap: balance; }
+.description { margin: 0; color: var(--muted); font-size: 14px; line-height: 1.9; white-space: pre-line; }
+.form { margin-top: 31px; display: grid; grid-template-columns: 1fr auto; }
+.form label { display: block; grid-column: 1 / -1; font-size: 14px; margin-bottom: 9px; color: #e1e5d8; letter-spacing: 1px; }
+.form input { grid-column: 1 / -1; width: 100%; height: 49px; border: 1px solid #697261; border-radius: 5px; padding: 0 15px; color: #f3f5ed; background: #ffffff03; font-size: 15px; }
+.form input::placeholder { color: #a2aa9d; }.form input:disabled { opacity: .6; }
+.submit { grid-column: 1 / -1; width: 100%; display: flex; align-items: center; justify-content: center; gap: 14px; min-height: 49px; margin-top: 15px; border: 0; border-radius: 5px; background: var(--lime); color: #192219; font-size: 16px !important; font-weight: 500 !important; transition: background .2s, transform .2s; }
+.submit > span:last-child:not(.spinner) { font-size: 23px; font-weight: 400; }.submit:hover:not(:disabled) { background: #ecf7ad; transform: translateY(-1px); }.submit:disabled { opacity: .75; }
+.privacy { color: var(--muted); font-size: 13px; line-height: 1.7; margin: 29px 0 0; }
+.secondary { display: block; background: none; border: 0; padding: 5px 0; margin: 24px 0 0; color: #c6cebd; font-size: 14px !important; text-decoration: underline; text-underline-offset: 6px; }
+.secondary:hover { color: #fff; }.secondary:disabled { opacity: .55; }
+.preview { display: inline-block; margin: 0 0 20px; color: #e5edcd; background: #d8eb9420; border: 1px solid #cfdf9950; border-radius: 4px; padding: 5px 8px; font-size: 12px; line-height: 1.5; }
+.feedback { grid-column: 1 / -1; color: #f0cfa8; font-size: 14px; line-height: 1.7; margin: 12px 0 0; }
+.resultIcon { display: grid; place-items: center; width: 50px; height: 50px; margin: 26px 0 -10px; border: 1px solid #b8cb7966; border-radius: 50%; color: var(--lime); background: #cbdc8d10; }
+.resultNote { color: var(--muted); font-size: 14px; line-height: 1.8; margin: 27px 0; }.result .secondary { margin-left: auto; margin-right: auto; }
+.spinner { width: 15px; height: 15px; border: 2px solid #20302644; border-top-color: #203026; border-radius: 50%; animation: spin .8s linear infinite; }
+.ticket { width: 830px; }.ticket .content { padding: 41px 44px 33px; }.ticket .close { color: #1a281d; }
+.ticketStub { width: 30%; flex-shrink: 0; position: relative; display: flex; flex-direction: column; align-items: center; overflow: hidden; padding: 37px 20px 0; border-left: 2px dashed #98a28a; color: #172419; background: #eeecd9; }
+.ticketStub::before, .ticketStub::after { content: ''; z-index: 1; position: absolute; left: -16px; width: 32px; height: 32px; border-radius: 50%; background: #0d140f; border: 1px solid #606c59; }.ticketStub::before { top: -17px; }.ticketStub::after { bottom: -17px; }
+.ticketMessage { z-index: 1; font-family: 'Songti SC', 'SimSun', serif; font-size: 35px; line-height: 1.45; font-weight: 400; letter-spacing: 8px; writing-mode: vertical-rl; }
+.ticketRule { z-index: 1; width: 29px; height: 1px; background: #7b856e; margin: 15px 0 18px; }
+.ticketBrand { z-index: 1; font-family: Georgia, serif; font-size: 14px; letter-spacing: 4px; }.ticketType { z-index: 1; margin-top: 8px; font-size: 11px; letter-spacing: 3px; }
+.ticketCoast { position: absolute; bottom: 0; left: 0; right: 0; height: 49%; background: linear-gradient(180deg, #eeecd9, #eeecd900 34%), url('/images/cinema-coast.webp') right center / cover; }
+.minimal { width: 535px; text-align: center; border-color: #7f8857; background: radial-gradient(ellipse at 50% 0, #26392733, transparent 70%), #101b14; }
+.minimal .content { padding: 38px 48px 30px; }.minimal .eyebrow { align-items: center; color: var(--lime); }.minimal .eyebrow > span { height: 2px; background: var(--lime); }
+.minimal .title { font-size: 43px; line-height: 1.45; margin-top: 26px; }.minimal .description { color: #dfe3d5; font-size: 15px; }.minimal .form { margin-top: 25px; text-align: left; }.minimal .privacy { grid-column: 1 / -1; text-align: center; margin-top: 22px; }.minimal .secondary { grid-column: 1 / -1; margin: 10px auto 0; }.minimal .resultIcon { margin: 25px auto -5px; }
+@keyframes arrive { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } } @keyframes spin { to { transform: rotate(360deg); } }
+@media (max-width: 640px) {
+  .overlay { padding: 16px 12px; align-items: flex-end; }.dialog { max-height: calc(100dvh - 32px); width: 430px; border-radius: 12px; flex-direction: column; }
+  .coast { width: 100%; min-height: 150px; height: 150px; padding: 20px 25px; background-position: right 48%; }.imageCaption { font-size: 11px; letter-spacing: 3px; }
+  .content, .ticket .content, .minimal .content { padding: 29px 25px 26px; }.title, .ticket .title { font-size: 30px; margin: 20px 0 12px; }.description { font-size: 14px; }
+  .form, .minimal .form { margin-top: 23px; }.form input { font-size: 16px; }.privacy { font-size: 12px; margin-top: 24px; }.secondary { margin-top: 19px; }
+  .ticket .content, .minimal .content { padding-top: 47px; }.ticket .close { color: #e4ebdc; }
+  .ticketStub { width: 100%; min-height: 105px; padding: 19px 25px; border-left: none; border-top: 2px dashed #98a28a; align-items: flex-start; justify-content: center; }
+  .ticketStub::before { left: -17px; top: -17px; }.ticketStub::after { left: auto; right: -17px; top: -17px; bottom: auto; }
+  .ticketMessage { writing-mode: horizontal-tb; font-size: 22px; letter-spacing: 5px; }.ticketRule, .ticketType { display: none; }.ticketBrand { font-size: 10px; margin-top: 7px; }.ticketCoast { width: 45%; height: 100%; left: auto; background-image: linear-gradient(90deg, #eeecd9, #eeecd900 45%), url('/images/cinema-coast.webp'); }
+  .minimal .title { font-size: 35px; }.preview { margin: 0 0 17px; }
+}
+@media (prefers-reduced-motion: reduce) { .dialog, .spinner { animation: none; }.submit { transition: none; } }

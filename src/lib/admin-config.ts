@@ -2,6 +2,7 @@ import crypto from 'node:crypto';
 import { initialSettings, parseSettings, type Settings, type SourceKind } from './admin-settings';
 
 export const settingKeys = {
+  newsletterEnabled: 'NEXT_PUBLIC_NEWSLETTER_ENABLED', newsletterStyle: 'NEXT_PUBLIC_NEWSLETTER_STYLE',
   name: 'NEXT_PUBLIC_SITE_NAME', subtitle: 'NEXT_PUBLIC_SITE_SUBTITLE', description: 'NEXT_PUBLIC_SITE_DESCRIPTION', announcement: 'NEXT_PUBLIC_SITE_ANNOUNCEMENT', logo: 'NEXT_PUBLIC_LOGO_STYLE',
   live: 'LIVE_ENABLED', settings: 'SETTINGS_ENABLED', recommendations: 'NEXT_PUBLIC_RECOMMENDATIONS_ENABLED',
   recommendSource: 'DEFAULT_RECOMMEND_SOURCE', imageMode: 'DEFAULT_IMAGE_MODE', autoplay: 'NEXT_PUBLIC_DEFAULT_AUTOPLAY', adFilter: 'NEXT_PUBLIC_DEFAULT_AD_FILTER', adultFilter: 'NEXT_PUBLIC_DEFAULT_ADULT_FILTER',
