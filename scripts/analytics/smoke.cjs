@@ -50,6 +50,10 @@ async function main() {
       assert.equal(report.geography.provinces.length, 34);
       const ip = report.tables.find(t => t.key === 'ips').rows.find(row => row.network_ip);
       assert.ok(ip, 'Server-collected IP must be reported');
+      const beijingTime = new Date(now + 8 * 3600000).toISOString().replace('T', ' ').replace('Z', '');
+      assert.equal(ip.first_seen, beijingTime, 'IP first visit uses Beijing time');
+      assert.equal(ip.last_seen, beijingTime, 'IP last visit uses Beijing time');
+      assert.ok(report.tables.find(t => t.key === 'ips').columns.some(c => c.label === '首次访问（北京时间）'));
       if (origin.startsWith('https:')) {
         assert.notEqual(ip.network_ip, '203.0.113.6', 'Caller cannot override edge IP');
         assert.ok(ip.country && ip.country !== 'ZZ', 'Native edge geography must replace caller headers');
@@ -70,7 +74,9 @@ async function main() {
         assert.ok(selected.tables.find(t => t.key === 'cities').rows.length);
         assert.ok(selected.tables.find(t => t.key === 'operators').rows.length);
         const selectedCsv = await request(`/api/admin/analytics?test=1&view=traffic&province=${province.code}&format=csv`);
-        assert.ok((await selectedCsv.text()).includes(`明细省份:${province.code}`));
+        const csv = await selectedCsv.text();
+        assert.ok(csv.includes(`明细省份:${province.code}`));
+        assert.ok(csv.includes('首次访问（北京时间）') && csv.includes(beijingTime));
         console.log('PROVINCE_DRILL_OK', province.name, 'IP/city/operator/CSV');
       }
     }

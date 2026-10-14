@@ -10,13 +10,13 @@ import s from './studio.module.css';
 import { NewsletterDialog, type NewsletterState } from '@/components/newsletter-dialog';
 
 const sections: { id: Section; label: string; icon: IconName; eyebrow: string; description: string }[] = [
-  { id: 'analytics', label: '数据统计', icon: 'bolt', eyebrow: 'THE AUDIENCE', description: '看见每一次寻找，也照顾每一次播放。' },
   { id: 'site', label: '网站信息', icon: 'gear', eyebrow: 'THE IDENTITY', description: '让每一次相遇，都从一个好印象开始。' },
   { id: 'features', label: '功能设置', icon: 'filter', eyebrow: 'THE EXPERIENCE', description: '决定观众能看到什么，保留恰到好处的体验。' },
   { id: 'sources', label: '数据源', icon: 'link', eyebrow: 'THE COLLECTION', description: '整理内容的入口，让故事有迹可循。' },
   { id: 'playback', label: '播放偏好', icon: 'bolt', eyebrow: 'THE DETAILS', description: '从封面到片尾，照顾每一个观影细节。' },
   { id: 'history', label: '发布记录', icon: 'clock', eyebrow: 'THE RELEASES', description: '每一次调整，都留下清晰的记录。' },
   { id: 'newsletter', label: '邮件订阅', icon: 'link', eyebrow: 'LETTERS FROM CINEMA', description: '选一种方式，把下一段好故事寄给观众。' },
+  { id: 'analytics', label: '数据统计', icon: 'bolt', eyebrow: 'THE AUDIENCE', description: '看见每一次寻找，也照顾每一次播放。' },
 ];
 type PublishState = 'review' | 'saving' | 'building' | 'verifying' | 'success' | 'failed';
 type RecordItem = { id: string; date: string; status: string; commit: string; message: string; branch: string };

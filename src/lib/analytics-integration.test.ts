@@ -69,6 +69,10 @@ test.skipIf(!enabled)('real TLS database: deduplication, ordered snapshots, owne
       expect(report.geography?.provinces).toHaveLength(34);
       expect(report.geography?.provinces.find(row => row.code === '44')).toMatchObject({ views: 1, ips: 1, visitors: 1 });
       expect(report.tables.find(t => t.key === 'ips')?.rows).toContainEqual(expect.objectContaining({ network_ip: '192.0.2.44', province_name: '广东' }));
+      const beijingTime = new Date(now + 8 * 3600000).toISOString().replace('T', ' ').replace('Z', '');
+      expect(report.tables.find(t => t.key === 'ips')?.rows).toContainEqual(expect.objectContaining({ first_seen: beijingTime, last_seen: beijingTime }));
+      expect(reportCsv(report)).toContain('首次访问（北京时间）');
+      expect(reportCsv(report)).toContain(beijingTime);
       expect(reportCsv(report)).toContain('全国省份（完整34项，不受分页限制）');
       expect(reportCsv(report)).toContain('192.0.2.44');
     }
