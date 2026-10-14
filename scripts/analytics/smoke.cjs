@@ -33,7 +33,7 @@ async function main() {
   const events = [event('page_view', { page: '/' }), event('search', { media: 'vod', searchId, query: 'QA-isolated', searchStatus: 'success', resultCount: 1 }), event('search_click', { media: 'vod', searchId }), event('playback', { media: 'vod', sourceKey: 'acceptance-smoke', sourceName: '验收测试', attemptId: crypto.randomUUID(), watchId: crypto.randomUUID(), searchId, startedAt: now - 60000, sequence: 1, playbackStatus: 'ended', playedMs: 40000, firstFrameMs: 450, firstFrameMethod: 'frame', title: 'QA-isolated', vodId: 'test', episode: 0 })];
   // The platform middleware must replace caller-supplied geography and IP claims.
   const response = await request('/api/analytics/collect', { token: session.token, events, ip: '203.0.113.6', province: '11' }, adminCookie, { 'x-04320-geo-country': 'ZZ', 'x-04320-geo-region': 'fake', 'eo-connecting-ip': '203.0.113.6' });
-  assert.equal(response.status, 200, 'Collect HTTP status');
+  assert.equal(response.status, 200, `Collect HTTP status${response.ok ? '' : ': ' + await response.text()}`);
   assert.deepEqual(await response.json(), { accepted: 4, duplicates: 0 });
   const duplicate = await request('/api/analytics/collect', { token: session.token, events });
   assert.deepEqual(await duplicate.json(), { accepted: 0, duplicates: 4 });

@@ -7,19 +7,11 @@ export async function onRequest(context) {
   if (!env.ANALYTICS_INGEST_SECRET || env.ANALYTICS_INGEST_SECRET.length < 32 || !request.eo?.clientIp) return json('统计地域服务暂不可用。', 503);
   let body;
   try {
-    const reader = request.body?.getReader();
-    if (!reader) return json('统计请求格式无效。', 400);
-    const chunks = []; let length = 0;
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      length += value.byteLength;
-      if (length > 32768) { await reader.cancel(); return json('统计请求过大。', 400); }
-      chunks.push(value);
-    }
-    const bytes = new Uint8Array(length); let offset = 0;
-    for (const chunk of chunks) { bytes.set(chunk, offset); offset += chunk.byteLength; }
-    body = JSON.parse(new TextDecoder().decode(bytes));
+    if (Number(request.headers.get('content-length')) > 32768) return json('统计请求过大。', 400);
+    // The EO runtime bounds text() at 1 MiB; reject our stricter limit before parsing.
+    const text = await request.text();
+    if (new TextEncoder().encode(text).byteLength > 32768) return json('统计请求过大。', 400);
+    body = JSON.parse(text);
   } catch { return json('统计请求格式无效。', 400); }
   try {
     const geo = request.eo.geo || {};
