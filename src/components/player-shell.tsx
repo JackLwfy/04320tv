@@ -1,6 +1,7 @@
 'use client';
 
 import { brandPath } from '@/lib/brand';
+import { attachPlaybackAnalytics, type PlaybackMetadata } from '@/lib/analytics-playback';
 
 import { useEffect, useRef, useState } from 'react';
 import Artplayer from 'artplayer';
@@ -26,6 +27,7 @@ import { formatTime } from '@/lib/utils';
  */
 
 interface PlayerShellProps {
+  analytics?: PlaybackMetadata;
   url: string;
   title: string;
   adFilter: boolean;
@@ -45,6 +47,7 @@ interface PlayerShellProps {
 }
 
 export function PlayerShell({
+  analytics,
   url,
   title,
   adFilter,
@@ -62,6 +65,7 @@ export function PlayerShell({
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const artRef = useRef<any>(null);
   const hlsRef = useRef<Hls | null>(null);
+  const analyticsRef = useRef<ReturnType<typeof attachPlaybackAnalytics> | null>(null);
   const [error, setError] = useState('');
   const [hint, setHint] = useState('');
   // 起播前的品牌占位图（沿用旧版 nomedia 素材），实际开始播放后隐藏
@@ -70,11 +74,11 @@ export function PlayerShell({
 
   // 始终持有最新 props/回调，避免重建播放器
   const propsRef = useRef({
-    url, title, adFilter, autoplayNext, episodeKey, nextUrl, nextEpisodeKey,
+    analytics, url, title, adFilter, autoplayNext, episodeKey, nextUrl, nextEpisodeKey,
     getRestorePosition, onTimeUpdate, onEnded, onPause, onRequestSwitchSource,
   });
   propsRef.current = {
-    url, title, adFilter, autoplayNext, episodeKey, nextUrl, nextEpisodeKey,
+    analytics, url, title, adFilter, autoplayNext, episodeKey, nextUrl, nextEpisodeKey,
     getRestorePosition, onTimeUpdate, onEnded, onPause, onRequestSwitchSource,
   };
 
@@ -481,6 +485,15 @@ export function PlayerShell({
     loadEpisode(url);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [url]);
+
+  useEffect(() => {
+    if (!artRef.current || !propsRef.current.analytics) return;
+    const tracker = attachPlaybackAnalytics(artRef.current.video, propsRef.current.analytics);
+    analyticsRef.current = tracker;
+    return () => { tracker.dispose(); analyticsRef.current = null; };
+  }, [url, episodeKey]);
+
+  useEffect(() => { if (error) analyticsRef.current?.fail('playback_recovery_exhausted'); }, [error]);
 
   // —— 广告过滤开关变化：重建 HLS loader（无需重建整个播放器） ——
   const firstAdFilterRef = useRef(true);

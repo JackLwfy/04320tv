@@ -1,6 +1,7 @@
 'use client';
 
 import { brandPath } from '@/lib/brand';
+import { attachPlaybackAnalytics, type PlaybackMetadata } from '@/lib/analytics-playback';
 
 import { useEffect, useRef, useState } from 'react';
 import Artplayer from 'artplayer';
@@ -42,6 +43,7 @@ function proxyUrl(url: string): string {
 }
 
 interface LivePlayerProps {
+  analytics?: PlaybackMetadata;
   /** 上游直播流地址（直连优先，失败自动走代理） */
   url: string;
   title: string;
@@ -50,11 +52,14 @@ interface LivePlayerProps {
   onNextChannel?: () => void;
 }
 
-export function LivePlayer({ url, title, onPrevChannel, onNextChannel }: LivePlayerProps) {
+export function LivePlayer({ url, title, analytics, onPrevChannel, onNextChannel }: LivePlayerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const artRef = useRef<any>(null);
   const hlsRef = useRef<Hls | null>(null);
+  const analyticsRef = useRef<ReturnType<typeof attachPlaybackAnalytics> | null>(null);
+  const metadataRef = useRef(analytics);
+  metadataRef.current = analytics;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const mpegtsRef = useRef<any>(null);
   const [error, setError] = useState('');
@@ -79,6 +84,8 @@ export function LivePlayer({ url, title, onPrevChannel, onNextChannel }: LivePla
       if (osdTimerRef.current) clearTimeout(osdTimerRef.current);
     };
   }, [url, title]);
+
+  useEffect(() => { if (error) analyticsRef.current?.fail(error.includes('超时') ? 'startup_timeout' : 'live_playback_error'); }, [error]);
 
   const showHint = (text: string) => {
     setHint(text);
@@ -330,6 +337,8 @@ export function LivePlayer({ url, title, onPrevChannel, onNextChannel }: LivePla
       },
     });
     artRef.current = art;
+    const tracker = metadataRef.current ? attachPlaybackAnalytics(art.video, metadataRef.current) : null;
+    analyticsRef.current = tracker;
     art.on('video:loadedmetadata', () => {
       try {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -366,6 +375,8 @@ export function LivePlayer({ url, title, onPrevChannel, onNextChannel }: LivePla
       clearTimeout(startTimer);
       if (hintTimerRef.current) clearTimeout(hintTimerRef.current);
       cleanupEngines();
+      tracker?.dispose();
+      analyticsRef.current = null;
       art.destroy();
       artRef.current = null;
       destroyed = true;

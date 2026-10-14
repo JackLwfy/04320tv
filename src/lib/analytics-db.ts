@@ -21,8 +21,10 @@ export function analyticsPool(): Pool {
       ssl: { ca: process.env.ANALYTICS_DB_CA!.replace(/\\n/g, '\n'), rejectUnauthorized: true, verifyIdentity: true },
       charset: 'utf8mb4', timezone: 'Z', dateStrings: true,
       connectTimeout: 3000, connectionLimit: 2, maxIdle: 1, idleTimeout: 10000,
-      waitForConnections: false, enableKeepAlive: true,
+      waitForConnections: true, queueLimit: 4, enableKeepAlive: true,
     });
+    // Driver timezone controls decoding; the session must also use UTC for SQL defaults.
+    pool.on('connection', connection => { connection.query("SET time_zone='+00:00'"); });
   }
   return pool;
 }

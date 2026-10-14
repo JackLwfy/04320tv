@@ -229,6 +229,7 @@ function LiveContent() {
                 <LivePlayer
                   url={currentUrl}
                   title={currentChannel?.name || '直播'}
+                  analytics={{ media: 'live', sourceKey: sources.find((s) => s.url === currentChannel?.sourceUrl)?.key || 'custom-live', sourceName: sources.find((s) => s.url === currentChannel?.sourceUrl)?.name || '自定义直播', sourceOrigin: liveEnvSources.some((s) => s.url === currentChannel?.sourceUrl) ? 'site' : 'custom', vodId: currentChannel?.tvgId || currentChannel?.name || 'unknown', title: currentChannel?.name || '直播', episode: 0 }}
                   onPrevChannel={goPrevChannel}
                   onNextChannel={goNextChannel}
                 />

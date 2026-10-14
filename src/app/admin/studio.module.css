@@ -289,3 +289,4 @@
 .newsletterChoices img { width: 100%; height: auto; border-radius: 4px; }
 .newsletterChoices strong { font-size: 17px; }
 .newsletterChoices span { font-size: 13px; color: #b3bbad; }
+.analyticsMain { max-width: 1680px; }

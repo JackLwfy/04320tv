@@ -27,7 +27,7 @@ async function main() {
     const backup = path.join(privateDir, 'edgeone-env-before.json');
     if (!fs.existsSync(backup)) fs.writeFileSync(backup, JSON.stringify(previous.entries));
     const db = JSON.parse(fs.readFileSync(path.join(privateDir, 'connection.json'), 'utf8'));
-    const values = { ANALYTICS_DB_HOST: db.host, ANALYTICS_DB_TLS_NAME: 'mail.fafamail.com', ANALYTICS_DB_PORT: String(db.port), ANALYTICS_DB_NAME: db.database, ANALYTICS_DB_USER: db.user, ANALYTICS_DB_PASSWORD: db.password, ANALYTICS_DB_CA: db.ca.trim(), ANALYTICS_INGEST_SECRET: db.ingestSecret, ANALYTICS_ENABLED: 'false' };
+    const values = { ANALYTICS_DB_HOST: db.host, ANALYTICS_DB_TLS_NAME: 'mail.fafamail.com', ANALYTICS_DB_PORT: String(db.port), ANALYTICS_DB_NAME: db.database, ANALYTICS_DB_USER: db.user, ANALYTICS_DB_PASSWORD: db.password, ANALYTICS_DB_CA: db.ca.trim().replace(/\n/g, '\\n'), ANALYTICS_INGEST_SECRET: db.ingestSecret, ANALYTICS_ENABLED: 'false' };
     if (Object.values(values).some(v => Buffer.byteLength(v) > 1000)) throw new Error('Environment value too large');
     await api('ModifyPagesProjectEnvs', { ProjectId: projectId, EnvVars: Object.entries(values).map(([Key, Value]) => ({ ...previous.entries.find(e => e.Key === Key), Key, Value })) });
     const check = await env();
@@ -47,6 +47,12 @@ async function main() {
     const r = await fetch('https://04320.com/api/admin/analytics/health', { headers: { Cookie: `tv_admin_session=${value}.${signature}` }, signal: AbortSignal.timeout(15000) });
     console.log('LIVE_DATABASE_HEALTH', r.status, await r.text());
     if (!r.ok) process.exitCode = 1;
-  } else { throw new Error('Expected configure, deploy, status or health'); }
+  } else if (mode === 'enable' || mode === 'disable') {
+    const previous = await env();
+    const Value = mode === 'enable' ? 'true' : 'false';
+    await api('ModifyPagesProjectEnvs', { ProjectId: projectId, EnvVars: [{ ...previous.entries.find(e => e.Key === 'ANALYTICS_ENABLED'), Key: 'ANALYTICS_ENABLED', Value }] });
+    if ((await env()).values.ANALYTICS_ENABLED !== Value) throw new Error('Activation verification failed');
+    console.log('ANALYTICS_ENABLED', Value, 'Redeploy required');
+  } else { throw new Error('Expected configure, deploy, status, health, enable or disable'); }
 }
 main().catch(e => { console.error(e.message); process.exitCode = 1; });

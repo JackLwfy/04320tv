@@ -3,12 +3,15 @@
 import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
+import { useAuth } from '@/components/auth';
 import { Header } from '@/components/header';
 import { RecommendSection } from '@/components/douban-section';
 import { DetailModal } from '@/components/detail-modal';
 import { AggregatedCard, aggregateResults } from '@/components/video-card';
 import { useAppStore, resolveSource, isInDisabledSubscription, isSourceDisabled } from '@/lib/store';
 import { api } from '@/lib/client-api';
+import { analyticsId, trackAnalytics, setAnalyticsAttribution, getAnalyticsAttribution } from '@/lib/analytics-client';
+import type { AnalyticsSourceOutcome } from '@/lib/analytics-types';
 import type { SearchResultItem, SourceSearchOutcome } from '@/lib/types';
 import { SearchHistoryDropdown, useSearchHistory } from '@/components/search-history';
 import { cn, formatDisableTtl, validateSourceUrl } from '@/lib/utils';
@@ -35,6 +38,7 @@ export default function HomePage() {
 }
 
 function HomeContent() {
+  const { checked, verified } = useAuth();
   const searchParams = useSearchParams();
   const router = useRouter();
   const { toast } = useToast();
@@ -53,6 +57,23 @@ function HomeContent() {
   /** 流式搜索中已结算的源（data 就绪前用于增量渲染） */
   const [streamedOutcomes, setStreamedOutcomes] = useState<SourceSearchOutcome[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
+  const [searchRevision, setSearchRevision] = useState(0);
+  const searchMetrics = useRef<{ key: string; id: string; started: number; done: boolean; begun?: boolean; cancelTimer?: ReturnType<typeof setTimeout>; outcomes: AnalyticsSourceOutcome[] }>({ key: '', id: '', started: 0, done: false, outcomes: [] });
+  const metricKey = JSON.stringify([urlQuery, selectedKeys, yellowFilter, searchRevision]);
+  if (searchMetrics.current.key !== metricKey) searchMetrics.current = { key: metricKey, id: analyticsId(), started: Date.now(), done: false, outcomes: [] };
+
+
+  useEffect(() => {
+    const metric = searchMetrics.current;
+    clearTimeout(metric.cancelTimer);
+    return () => {
+      metric.cancelTimer = setTimeout(() => {
+        if (!metric.begun || metric.done) return;
+        metric.done = true;
+        trackAnalytics({ type: 'search', media: 'vod', id: metric.id, searchId: metric.id, query: urlQuery.slice(0, 100), searchStatus: 'cancelled', durationMs: Math.min(600000, Date.now() - metric.started), resultCount: metric.outcomes.reduce((sum, outcome) => sum + outcome.resultCount, 0), outcomes: [...new Map(metric.outcomes.map((o) => [o.sourceKey, o])).values()].slice(0, 50) });
+      }, 0);
+    };
+  }, [metricKey, urlQuery]);
 
   // URL 驱动搜索：?s= 变化时回填输入框
   useEffect(() => {
@@ -98,10 +119,14 @@ function HomeContent() {
     // 与 runSearch 的截断规则保持一致：顶栏搜索 / 手动构造长链接不会绕过上限
     queryFn: ({ signal }) => {
       setStreamedOutcomes([]);
+      const metric = searchMetrics.current;
+      metric.outcomes = [];
+      metric.begun = true;
       return api.search(urlQuery.slice(0, 100), selectedSources, yellowFilter, {
         signal,
         // 逐源结算即更新：结果边搜边渲染，同时滚动健康度
         onSource: (outcome) => {
+          metric.outcomes.push({ sourceKey: outcome.sourceKey, sourceName: sourceName(outcome.sourceKey), sourceOrigin: envSources.some((s) => s.key === outcome.sourceKey) && !customAPIs.some((s) => s.key === outcome.sourceKey) ? 'site' : 'custom', status: outcome.ok ? outcome.list.length ? 'success' : 'empty' : outcome.timedOut ? 'timeout' : 'error', durationMs: outcome.ms || 0, resultCount: outcome.list.length, errorCode: outcome.ok ? undefined : outcome.timedOut ? 'source_timeout' : 'source_request_failed' });
           setStreamedOutcomes((prev) => [...prev, outcome]);
           for (const ev of useAppStore.getState().recordSourceHealth([outcome])) {
             toast(
@@ -119,10 +144,20 @@ function HomeContent() {
     staleTime: 300_000,
   });
 
+  useEffect(() => {
+    const metric = searchMetrics.current;
+    if (!checked || !verified || !urlQuery || searchQuery.isFetching || metric.done || (!searchQuery.data && !searchQuery.isError)) return;
+    metric.done = true;
+    const failures = searchQuery.data?.failures.length || 0;
+    const count = searchQuery.data?.list.length || 0;
+    setAnalyticsAttribution({ searchId: metric.id });
+    trackAnalytics({ type: 'search', media: 'vod', id: metric.id, searchId: metric.id, query: urlQuery.slice(0, 100), durationMs: Math.min(600000, Date.now() - metric.started), resultCount: count, outcomes: [...new Map(metric.outcomes.map((o) => [o.sourceKey, o])).values()].slice(0, 50), searchStatus: searchQuery.isError || (failures > 0 && failures >= selectedSources.length) ? 'error' : failures ? 'partial' : count ? 'success' : 'empty', ...getAnalyticsAttribution() });
+  }, [checked, verified, urlQuery, metricKey, searchQuery.isFetching, searchQuery.data, searchQuery.isError, selectedSources.length]);
+
   // 最近搜索改为搜索框下拉（聚焦展开、按输入过滤），不再常驻首屏
   const searchHistory = useSearchHistory(input);
 
-  const runSearch = (q: string) => {
+  const runSearch = (q: string, fromRecommendation = false) => {
     const query = q.trim().slice(0, 100);
     if (!query) {
       toast('请输入搜索内容', 'info');
@@ -133,6 +168,8 @@ function HomeContent() {
       toast('请先在设置中添加并勾选点播源', 'warning');
       return;
     }
+    if (!fromRecommendation) setAnalyticsAttribution({ recommendationId: undefined });
+    if (query === urlQuery) setSearchRevision(value => value + 1);
     router.push(`/?s=${encodeURIComponent(query)}`, { scroll: false });
     searchHistory.record(query);
   };
@@ -337,7 +374,7 @@ function HomeContent() {
                     <AggregatedCard
                       key={group.key}
                       group={group}
-                      onOpen={(item) => setDetailItem(item)}
+                      onOpen={(item) => { setAnalyticsAttribution({ searchId: searchMetrics.current.id }); trackAnalytics({ type: 'search_click', media: 'vod', searchId: searchMetrics.current.id, sourceKey: item.sourceKey, sourceName: item.sourceName, vodId: String(item.vodId), title: item.name }); setDetailItem(item); }}
                     />
                   ))}
                 </div>
@@ -371,7 +408,7 @@ function HomeContent() {
             onContinue={() => setHistoryOpen(true)}
             onPick={(title) => {
               setInput(title);
-              runSearch(title);
+              runSearch(title, true);
             }}
           />
         )}

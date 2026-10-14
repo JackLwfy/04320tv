@@ -1,6 +1,7 @@
 'use client';
 
 import Image from 'next/image';
+import { AdminAnalytics } from '@/components/admin-analytics';
 import Link from 'next/link';
 import { useCallback, useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { Icon, type IconName } from '@/components/icon';
@@ -9,6 +10,7 @@ import s from './studio.module.css';
 import { NewsletterDialog, type NewsletterState } from '@/components/newsletter-dialog';
 
 const sections: { id: Section; label: string; icon: IconName; eyebrow: string; description: string }[] = [
+  { id: 'analytics', label: '数据统计', icon: 'bolt', eyebrow: 'THE AUDIENCE', description: '看见每一次寻找，也照顾每一次播放。' },
   { id: 'site', label: '网站信息', icon: 'gear', eyebrow: 'THE IDENTITY', description: '让每一次相遇，都从一个好印象开始。' },
   { id: 'features', label: '功能设置', icon: 'filter', eyebrow: 'THE EXPERIENCE', description: '决定观众能看到什么，保留恰到好处的体验。' },
   { id: 'sources', label: '数据源', icon: 'link', eyebrow: 'THE COLLECTION', description: '整理内容的入口，让故事有迹可循。' },
@@ -212,9 +214,10 @@ export default function AdminPage() {
     </aside>
     <div className={s.workspace}>
       <header className={s.topbar}><span className={s.breadcrumb}>控制室 <span>/</span> {active.label}</span><div><span className={s.badge}>生产环境 · main</span><Link href="/" target="_blank" rel="noreferrer" className={s.visit}>访问网站 <Icon name="link" /></Link><button className={s.logout} onClick={() => changeCount ? setConfirm('logout') : logout()}>退出登录</button></div></header>
-      <div className={s.previewNotice}><Icon name="alert" /><span>配置保存到 EdgeOne，完成构建后生效。关闭页面不会中断已提交的部署。</span></div>
-      <main id="admin-content" className={s.main}>
+      {section !== 'analytics' && <div className={s.previewNotice}><Icon name="alert" /><span>配置保存到 EdgeOne，完成构建后生效。关闭页面不会中断已提交的部署。</span></div>}
+      <main id="admin-content" className={`${s.main} ${section === 'analytics' ? s.analyticsMain : ''}`}>
         <div className={s.pageHeading}><span className={s.eyebrow}>{active.eyebrow} <span>/ 0{sections.findIndex((item) => item.id === section) + 1}</span></span><h1 tabIndex={-1} ref={titleRef}>{active.label}</h1><p>{active.description}</p></div>
+        {section === 'analytics' ? <AdminAnalytics /> : <>
         {notice && <div className={s.notice} role="status"><Icon name="alert" />{notice}</div>}<div className={s.cloudTools}><span>04320.com · EdgeOne</span><button className={s.secondary} disabled={running} onClick={() => setConfirm('reload')}>重新读取配置</button></div>
         <div className={s.contentGrid}>
           <section className={s.editor} aria-label={active.label}>
@@ -249,8 +252,9 @@ export default function AdminPage() {
           </section>
           <aside className={s.preview} aria-label="网站预览"><h2>{section === 'history' ? '每一步，都有迹可循。' : '网站预览'}</h2><p>随编辑即时变化，仅供视觉参考。</p><div className={s.previewWindow}><div className={s.previewNav}><Image src={`/brand/${draft.logo}/logo-dark.svg`} alt="网站 Logo 预览" width={120} height={34} /><Icon name="search" /></div><div className={s.previewArt}><Image src="/images/cinema-coast.webp" alt="灯塔海岸首页预览" fill sizes="320px" /><div><span>{draft.subtitle || '光影之间'}</span><h3>把今晚，<br />交给好故事。</h3><p>{draft.announcement || '有些故事，仍在等你。'}</p></div></div><div className={s.previewInfo}><strong>{draft.name || '网站名称'}</strong><p>{draft.description || '网站简介将显示在这里。'}</p><div><span>发现</span>{draft.live && <span>直播</span>}{draft.settings && <span>设置</span>}</div></div></div><div className={s.previewTip}><span className={s.eyebrow}>A NOTE ON PUBLISHING</span><p>好的改变，值得确认。<br />检查变更，再让它与观众见面。</p><span>保存并部署后更新线上网站。</span></div></aside>
         </div>
+        </>}
       </main>
-      <footer className={s.savebar}><div className={s.saveStatus}><Icon name={changeCount || needsDeployment ? 'clock' : 'check'} /><div><strong>{changeCount ? `${changeCount} 项未保存变更` : needsDeployment ? '配置已保存，等待部署生效' : '云端配置已同步'}</strong><small>{changeCount ? '确认变更后，保存并发布到线上。' : '修改配置后需要重新构建，通常需要几分钟。'}</small></div></div><div className={s.saveActions}><button className={s.secondary} disabled={!changeCount || running} onClick={() => setConfirm('discard')}>放弃修改</button><button className={s.primary} disabled={running || (!changeCount && !needsDeployment)} onClick={changeCount ? review : retryDeployment}>{changeCount ? '保存并部署' : needsDeployment ? '继续发布' : '保存并部署'}<Icon name="arrowDown" className={s.arrow} /></button></div></footer>
+      {section !== 'analytics' && <footer className={s.savebar}><div className={s.saveStatus}><Icon name={changeCount || needsDeployment ? 'clock' : 'check'} /><div><strong>{changeCount ? `${changeCount} 项未保存变更` : needsDeployment ? '配置已保存，等待部署生效' : '云端配置已同步'}</strong><small>{changeCount ? '确认变更后，保存并发布到线上。' : '修改配置后需要重新构建，通常需要几分钟。'}</small></div></div><div className={s.saveActions}><button className={s.secondary} disabled={!changeCount || running} onClick={() => setConfirm('discard')}>放弃修改</button><button className={s.primary} disabled={running || (!changeCount && !needsDeployment)} onClick={changeCount ? review : retryDeployment}>{changeCount ? '保存并部署' : needsDeployment ? '继续发布' : '保存并部署'}<Icon name="arrowDown" className={s.arrow} /></button></div></footer>}
     </div>
     {confirm && <Modal title={confirm === 'discard' ? '放弃这次修改？' : confirm === 'logout' ? '退出控制室？' : confirm === 'reload' ? '重新读取云端配置？' : '移除这个数据源？'} onClose={() => setConfirm(null)}><p className={s.modalDescription}>{confirm === 'logout' ? '未保存的修改将丢失，已提交的部署会继续执行。' : confirm === 'reload' ? '将丢弃本页尚未保存的修改，并载入当前云端配置。' : confirm === 'discard' ? '恢复到最近读取的云端内容，不会修改线上配置。' : '保存并部署后，此来源将从网站预置数据源中移除。'}</p><div className={s.modalActions}><button className={s.secondary} onClick={() => setConfirm(null)} autoFocus>继续编辑</button><button className={s.primary} onClick={confirmAction}>确认{confirm === 'logout' ? '退出' : confirm === 'discard' ? '放弃' : confirm === 'reload' ? '读取' : '移除'}</button></div></Modal>}
     {publish && <Modal title={publish === 'success' ? '这次调整，已正式上线。' : publish === 'failed' ? '发布暂未完成' : '让改变，正式开场。'} busy={running} onClose={() => setPublish(null)}>

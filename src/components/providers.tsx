@@ -1,9 +1,10 @@
 'use client';
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { useEffect, useState, type ReactNode } from 'react';
+import { Suspense, useEffect, useState, type ReactNode } from 'react';
 import { ToastProvider } from './toast';
 import { AuthProvider } from './auth';
+import { AnalyticsTracker } from './analytics-tracker';
 import { ThemeProvider } from './theme';
 import { GlobalDownloadManager } from './download-manager';
 import { useAppStore, hydrateLiveProbeResults } from '@/lib/store';
@@ -58,7 +59,7 @@ function SiteProviders({ children }: { children: ReactNode }) {
           {/* 全站常驻：下载事件监听（enqueueDownload）依赖它存在——
               挂在 Header 里会让 /watch 等不渲染 Header 的页面派发的事件凭空丢失 */}
           <GlobalDownloadManager />
-          <AuthProvider>{children}</AuthProvider>
+          <AuthProvider><Suspense><AnalyticsTracker /></Suspense>{children}</AuthProvider>
         </ToastProvider>
       </ThemeProvider>
     </QueryClientProvider>

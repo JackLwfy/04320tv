@@ -12,3 +12,6 @@ vitest-results.json
 .zcode/
 .codebuddy/
 generated-images/
+.playwright-cli/
+腾讯云apikey.txt
+部署到了腾讯云.txt

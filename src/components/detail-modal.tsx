@@ -14,6 +14,7 @@ import { copyToClipboard } from '@/lib/clipboard';
 import { EmptyState, ErrorState, LoadingState } from './states';
 import { useFocusTrap } from './use-focus-trap';
 import { Icon } from './icon';
+import { trackAnalytics, getAnalyticsAttribution } from '@/lib/analytics-client';
 
 /**
  * 详情弹窗：剧集列表 + 排序 + 复制链接。
@@ -31,6 +32,13 @@ export function DetailModal({ item, onClose }: { item: SearchResultItem | null; 
   const [posterFailed, setPosterFailed] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
   const panelRef = useRef<HTMLDivElement>(null);
+  const trackedDetail = useRef<SearchResultItem | null>(null);
+  useEffect(() => {
+    if (!item) { trackedDetail.current = null; return; }
+    if (trackedDetail.current === item) return;
+    trackedDetail.current = item;
+    trackAnalytics({ type: 'detail_view', ...getAnalyticsAttribution(), media: 'vod', sourceKey: item.sourceKey, sourceName: item.sourceName, vodId: String(item.vodId), title: item.name });
+  }, [item]);
 
   // 打开时把焦点移入弹窗、Tab 圈闭在弹窗内、关闭后归还焦点
   useFocusTrap(Boolean(item), panelRef);

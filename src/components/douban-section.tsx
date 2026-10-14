@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { trackAnalytics, setAnalyticsAttribution } from '@/lib/analytics-client';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/client-api';
 import { useAppStore } from '@/lib/store';
@@ -8,6 +9,7 @@ import { cn } from '@/lib/utils';
 import type { DoubanItem } from '@/lib/types';
 import { DoubanCard } from './video-card';
 import { Icon } from './icon';
+import { useAuth } from './auth';
 
 const MOVIE_TAGS = ['热门', '最新', '经典', '豆瓣高分', '冷门佳片', '华语', '欧美', '韩国', '日本', '动画'];
 const TV_TAGS = ['热门', '美剧', '英剧', '韩剧', '日剧', '国产剧', '港剧', '日本动画', '综艺', '纪录片'];
@@ -87,7 +89,7 @@ function DoubanView({ onPick, onContinue }: RecommendProps) {
       ) : (
         <div className="cinema-recommend-grid">
           {items.map((item) => (
-            <DoubanCard key={item.id} item={item} onClick={() => onPick(item.title)} />
+            <TrackedRecommendation key={item.id} item={item} onPick={onPick} />
           ))}
         </div>
       )}
@@ -132,7 +134,7 @@ function BangumiView({ onPick, onContinue }: RecommendProps) {
       ) : (
         <div className="cinema-recommend-grid">
           {items.map((item) => (
-            <DoubanCard key={item.id} item={item} onClick={() => onPick(item.title)} />
+            <TrackedRecommendation key={item.id} item={item} onPick={onPick} />
           ))}
         </div>
       )}
@@ -181,12 +183,33 @@ function HotListView({ onPick, onContinue }: RecommendProps) {
       ) : (
         <div className="cinema-recommend-grid">
           {items.map((item) => (
-            <DoubanCard key={item.id} item={item} onClick={() => onPick(item.title)} />
+            <TrackedRecommendation key={item.id} item={item} onPick={onPick} />
           ))}
         </div>
       )}
     </section>
   );
+}
+
+function TrackedRecommendation({ item, onPick }: { item: DoubanItem; onPick: (title: string) => void }) {
+  const { checked, verified } = useAuth();
+  const ref = useRef<HTMLDivElement>(null);
+  const seen = useRef(false);
+  const source = useAppStore((s) => s.recommendSource);
+  const recommendationId = `${source}:${item.id}`;
+  useEffect(() => {
+    if (!checked || !verified || !ref.current || !('IntersectionObserver' in window)) return;
+    const observer = new IntersectionObserver((entries) => {
+      if (!seen.current && entries.some((entry) => entry.intersectionRatio >= 0.5) && !document.hidden) {
+        seen.current = true;
+        trackAnalytics({ type: 'recommendation_impression', recommendationId, title: item.title });
+        observer.disconnect();
+      }
+    }, { threshold: 0.5 });
+    observer.observe(ref.current);
+    return () => observer.disconnect();
+  }, [checked, verified, recommendationId, item.title]);
+  return <div ref={ref}><DoubanCard item={item} onClick={() => { setAnalyticsAttribution({ recommendationId, searchId: undefined }); trackAnalytics({ type: 'recommendation_click', recommendationId, title: item.title }); onPick(item.title); }} /></div>;
 }
 
 function GridSkeleton() {

@@ -238,6 +238,7 @@ function WatchContent() {
               {currentUrl ? (
                 <PlayerShell
                   url={currentUrl}
+                  analytics={{ media: 'vod', sourceKey: sourceKey || 'direct', sourceName: source?.name || sourceKey, sourceOrigin: store.envSources.some((s) => s.key === sourceKey) && !store.customAPIs.some((s) => s.key === sourceKey) ? 'site' : 'custom', vodId: String(vodId), title: videoTitle, episode: currentIndex }}
                   title={videoTitle}
                   adFilter={store.adFilter}
                   autoplayNext={store.autoplayNext}

@@ -1,5 +1,7 @@
 'use client';
 
+import { markAnalyticsSourceSwitch } from '@/lib/analytics-playback';
+
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { api } from '@/lib/client-api';
@@ -150,6 +152,7 @@ export function SwitchSourceModal({
       return;
     }
     const targetIndex = currentIndex < c.episodes ? currentIndex : 0;
+    if (targetIndex === currentIndex && (c.source.key !== currentSourceKey || String(c.result.vodId) !== String(currentVodId))) markAnalyticsSourceSwitch('manual', { sourceKey: c.source.key, vodId: String(c.result.vodId) });
     onClose(); // 先关闭面板，避免路由参数变化后弹窗残留旧数据
     router.push(
       buildWatchUrl({

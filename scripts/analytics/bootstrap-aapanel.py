@@ -33,6 +33,7 @@ def main():
     password = panel.execute('SELECT mysql_root FROM config LIMIT 1').fetchone()[0]
     db = pymysql.connect(host='127.0.0.1', user='root', password=password, connect_timeout=5, autocommit=True)
     cur = db.cursor()
+    cur.execute("SET time_zone='+00:00'")
     if sys.argv[1] == 'create':
         assert not (BASE / 'connection.json').exists(), 'Provisioning already started; inspect before retry'
         assert not panel.execute('SELECT id FROM databases WHERE name=? OR username=?', (NAME, USER)).fetchone()
@@ -59,6 +60,14 @@ def main():
             cur.execute('GRANT SELECT, INSERT, UPDATE, DELETE ON `' + NAME + '`.* TO %s@%s', (USER, host))
             cur.execute('ALTER USER %s@%s REQUIRE SSL WITH MAX_USER_CONNECTIONS 12', (USER, host))
         print('AAPANEL_DATABASE_CREATED', NAME)
+    elif sys.argv[1] == 'schema':
+        assert panel.execute('SELECT id FROM databases WHERE name=? AND username=?', (NAME, USER)).fetchone()
+        schema = Path(__file__).with_name('schema.sql').read_text()
+        cur.execute('USE `' + NAME + '`')
+        for statement in '\n'.join(line for line in schema.splitlines() if not line.lstrip().startswith('--')).split(';'):
+            if statement.strip():
+                cur.execute(statement)
+        print('SCHEMA_APPLIED', NAME)
     elif sys.argv[1] == 'activate':
         # A hostname change can leave the SysV script looking for a different pid file.
         cur.execute('SELECT @@pid_file')
@@ -142,6 +151,8 @@ def main():
         assert q.fetchone()[1]
         connection.close()
         print('DEDICATED_ACCOUNT_TLS_OK')
+    else:
+        raise RuntimeError('Expected create, tls, activate or schema')
     db.close()
     panel.close()
 

@@ -1,10 +1,11 @@
 'use client';
 
-import { useEffect, useId, useRef, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useId, useRef, useState, type FormEvent } from 'react';
 import { createPortal } from 'react-dom';
 import { Icon } from './icon';
 import { useFocusTrap } from './use-focus-trap';
 import styles from './newsletter-dialog.module.css';
+import { trackAnalytics } from '@/lib/analytics-client';
 
 export type NewsletterStyle = 'lighthouse' | 'ticket' | 'minimal';
 export type NewsletterState = 'form' | 'submitting' | 'accepted' | 'error' | 'unavailable';
@@ -23,6 +24,9 @@ export function NewsletterDialog({ style, onClose, onAccepted, previewState }: {
   const [mounted, setMounted] = useState(false);
   const preview = previewState !== undefined;
   const visibleState = previewState ?? state;
+  const tracked = useRef(false);
+  useEffect(() => { if (!preview && !tracked.current) { tracked.current = true; trackAnalytics({ type: 'newsletter_impression' }); } }, [preview]);
+  const close = useCallback(() => { if (!preview) trackAnalytics({ type: 'newsletter_close' }); onClose(); }, [preview, onClose]);
   const complete = visibleState === 'accepted';
   const busy = visibleState === 'submitting';
   useFocusTrap(mounted, panelRef);
@@ -42,18 +46,19 @@ export function NewsletterDialog({ style, onClose, onAccepted, previewState }: {
       if (event.key === 'Escape') {
         event.stopPropagation();
         requestRef.current?.abort();
-        onClose();
+        close();
       }
     };
     window.addEventListener('keydown', escape);
     return () => window.removeEventListener('keydown', escape);
-  }, [onClose]);
+  }, [close]);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (preview || requestRef.current) return;
     const controller = new AbortController();
     requestRef.current = controller;
+    trackAnalytics({ type: 'newsletter_submit' });
     setState('submitting');
     const timeout = window.setTimeout(() => controller.abort(), 15000);
     try {
@@ -64,17 +69,21 @@ export function NewsletterDialog({ style, onClose, onAccepted, previewState }: {
         signal: controller.signal,
       });
       if (response.status === 503) {
+        trackAnalytics({ type: 'newsletter_error', errorCode: 'unavailable' });
         setState('unavailable');
         return;
       }
       const result = await response.json();
       if (!response.ok || result.status !== 'accepted') {
+        trackAnalytics({ type: 'newsletter_error', errorCode: 'rejected' });
         setState('error');
         return;
       }
+      trackAnalytics({ type: 'newsletter_accepted' });
       setState('accepted');
       onAccepted?.();
     } catch {
+      trackAnalytics({ type: 'newsletter_error', errorCode: 'request_failed' });
       setState('error');
     } finally {
       window.clearTimeout(timeout);
@@ -93,12 +102,12 @@ export function NewsletterDialog({ style, onClose, onAccepted, previewState }: {
 
   return createPortal(
     <div className={styles.overlay} onClick={(event) => {
-      if (event.target === event.currentTarget) { requestRef.current?.abort(); onClose(); }
+      if (event.target === event.currentTarget) { requestRef.current?.abort(); close(); }
     }}>
       <div ref={panelRef} tabIndex={-1} role="dialog" aria-modal="true" aria-labelledby={`${id}-title`}
         aria-describedby={`${id}-description`} className={`${styles.dialog} ${styles[style]}`}>
         <button type="button" className={styles.close} aria-label="关闭订阅弹窗" onClick={() => {
-          requestRef.current?.abort(); onClose();
+          requestRef.current?.abort(); close();
         }}><Icon name="close" /></button>
         {style === 'lighthouse' && <div className={styles.coast} aria-hidden="true">
           <span className={styles.imageCaption}>来自光影的一封信</span>
@@ -113,7 +122,7 @@ export function NewsletterDialog({ style, onClose, onAccepted, previewState }: {
           </div>
           {complete ? <div className={styles.result}>
             <p className={styles.resultNote}>也可以检查垃圾邮件文件夹。</p>
-            <button type="button" className={styles.submit} onClick={onClose}>知道了<span aria-hidden="true">→</span></button>
+            <button type="button" className={styles.submit} onClick={close}>知道了<span aria-hidden="true">→</span></button>
           </div> : <form onSubmit={submit} className={styles.form} aria-busy={busy}>
             <label htmlFor={`${id}-email`}>电子邮箱</label>
             <input id={`${id}-email`} name="email" type="email" required maxLength={254}
@@ -127,7 +136,7 @@ export function NewsletterDialog({ style, onClose, onAccepted, previewState }: {
               {busy ? <><span className={styles.spinner} />正在提交…</> : <>{visibleState === 'error' ? '重新提交' : style === 'ticket' ? '领取光影来信' : '订阅光影来信'}<span aria-hidden="true">→</span></>}
             </button>
             <p className={styles.privacy}>随时可以退订。</p>
-            <button type="button" className={styles.secondary} onClick={onClose}>暂时不用</button>
+            <button type="button" className={styles.secondary} onClick={close}>暂时不用</button>
           </form>}
         </div>
         {style === 'ticket' && <aside className={styles.ticketStub} aria-hidden="true">

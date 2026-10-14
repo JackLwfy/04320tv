@@ -1,4 +1,4 @@
-export type Section = 'site' | 'features' | 'sources' | 'playback' | 'newsletter' | 'history';
+export type Section = 'site' | 'features' | 'sources' | 'playback' | 'newsletter' | 'history' | 'analytics';
 export type SourceKind = 'vod' | 'live' | 'subscription';
 export interface AdminSource { id: string; kind: SourceKind; name: string; url: string; enabled: boolean }
 export interface Settings {
