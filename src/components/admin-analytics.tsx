@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { AnalyticsReport, AnalyticsTrend, AnalyticsView, MetricFormat } from '@/lib/analytics-types';
 import { analyticsDate, analyticsRange, formatMetric } from '@/lib/analytics-display';
+import { AdminGeography } from './admin-geography';
 import s from './admin-analytics.module.css';
 
 const views: { id: AnalyticsView; label: string; description: string }[] = [
@@ -125,6 +126,7 @@ export function AdminAnalytics() {
         <section className={s.cards} aria-label="关键指标">{report.cards.map((card, index) => <article className={s.card} key={card.key}><span className={s.cardIndex}>{String(index + 1).padStart(2, '0')}</span><h2>{card.label}</h2><strong>{formatMetric(card.value, card.format)}</strong>{card.previous !== undefined && <span className={s.comparison}>上一等长时段：{formatMetric(card.previous, card.format)}</span>}<p>{card.help}</p></article>)}</section>
         {otherNotices.length > 0 && <details key={view} className={s.notices}><summary>数据口径与说明 <span>{otherNotices.length} 项 · 展开查看</span></summary><div>{otherNotices.map((notice, index) => <p key={index}>{notice}</p>)}</div></details>}
         {view !== 'health' && <Trend rows={report.trend} />}
+        {view === 'traffic' && <AdminGeography data={report.geography} />}
         <div className={s.reports}>{report.tables.map(table => <section key={table.key} className={s.panel}><div className={s.panelHeading}><div><span className={s.eyebrow}>A CLOSER LOOK</span><h2>{table.title}</h2>{table.help && <p>{table.help}</p>}</div><span className={s.rowCount}>{table.total.toLocaleString('zh-CN')} 条</span></div><div className={s.tableScroll}><table><caption className={s.srOnly}>{table.title} · 第 {table.page} 页</caption><thead><tr>{table.columns.map(column => <th key={column.key} scope="col">{column.label}</th>)}</tr></thead><tbody>{table.rows.map((row, index) => <tr key={index}>{table.columns.map(column => <td key={column.key}>{formatMetric(row[column.key] ?? null, column.format)}</td>)}</tr>)}</tbody></table>{!table.rows.length && <p className={s.empty}>{table.total > 0 ? '此表在当前页没有记录，请查看前面的页码。' : '所选条件下暂无记录。'}</p>}</div></section>)}</div>
         {report.tables.length > 0 && <div className={s.pagination}><p>各明细表使用同一页码；CSV 导出本页各表数据。</p><div><button disabled={page <= 1} onClick={() => setPage(value => value - 1)} aria-label="上一页">← 上一页</button><span>第 {page} / {maxPage} 页</span><button disabled={page >= maxPage} onClick={() => setPage(value => value + 1)} aria-label="下一页">下一页 →</button></div></div>}
         <p className={s.footerNote}>匿名设备不等同于真实人数。客户端事件可能漏报；接口可达、实际起播与邮件送达分别统计。</p>

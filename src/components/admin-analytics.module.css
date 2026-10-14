@@ -27,6 +27,7 @@
 .notices > div { padding: 0 17px 13px; }
 .notices p + p { margin-top: 6px; }
 .cards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border: 1px solid #364037; border-radius: 5px; overflow: hidden; margin-bottom: 16px; background: #171d19; }
+.card:last-child:nth-child(3n + 1) { grid-column: 1 / -1; }
 .card { position: relative; padding: 25px 26px 23px; border-right: 1px solid #364037; border-bottom: 1px solid #364037; min-width: 0; margin-bottom: -1px; }
 .card:nth-child(3n) { border-right: 0; }
 .cardIndex { position: absolute; right: 22px; top: 25px; font-size: 10px; color: #75816b; letter-spacing: .15em; }

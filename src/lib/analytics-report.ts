@@ -2,6 +2,7 @@ import type { PoolConnection, RowDataPacket } from 'mysql2/promise';
 import { analyticsPool } from './analytics-db';
 import { analyticsEnabled } from './analytics-auth';
 import { businessDay, DAY_MS, sqlDate } from './analytics-validation';
+import { geographyReport, PROVINCES } from './analytics-geography';
 import type { AnalyticsCard, AnalyticsColumn, AnalyticsReport, AnalyticsTable, AnalyticsTrend, AnalyticsView, MetricFormat } from './analytics-types';
 
 export interface ReportFilter { view: AnalyticsView; from: string; to: string; media: string; source: string; device: string; browser: string; page: number; test: boolean }
@@ -102,7 +103,7 @@ export async function analyticsReport(f: ReportFilter): Promise<AnalyticsReport>
   const c = await analyticsPool().getConnection();
   try {
     const e = where(f); const p = where(f, 'started_at'); const s = where(f, 'occurred_at', { media: false });
-    const health = (await rows(c, 'SELECT (SELECT enabled FROM analytics_meta WHERE id=1) enabled,(SELECT created_at FROM analytics_meta WHERE id=1) created_at,MAX(last_received_at) last_event FROM analytics_ingest_daily'))[0];
+    const health = (await rows(c, 'SELECT (SELECT enabled FROM analytics_meta WHERE id=1) enabled,(SELECT created_at FROM analytics_meta WHERE id=1) created_at,(SELECT geography_started_at FROM analytics_meta WHERE id=1) geography_started_at,MAX(last_received_at) last_event FROM analytics_ingest_daily'))[0];
     const report: AnalyticsReport = { view: f.view, from: f.from, to: f.to, generatedAt: new Date().toISOString(), timezone: 'Asia/Shanghai', enabled: analyticsEnabled() && !!health.enabled, lastEventAt: health.last_event ? String(health.last_event).replace(' ', 'T') + 'Z' : null, cards: [], trend: [], tables: [], notices: ['访客按匿名浏览器标识去重，并非真实人数；浏览器事件可能漏报或被伪造。', '观看时长按播放尝试开始日期归属；跨午夜长播放会记入开始日。'], sources: [] };
     const collectionStart = health.created_at ? Date.parse(String(health.created_at).replace(' ', 'T') + 'Z') : Date.now();
     const firstDay = businessDay(collectionStart);
@@ -152,10 +153,20 @@ export async function analyticsReport(f: ReportFilter): Promise<AnalyticsReport>
       report.cards = [card('visitors', '访问设备', count('visitors'), 'number', '所选范围内匿名浏览器去重；不可与每日UV相加混用。', old ? n(old.visitors) : null), card('searches', '搜索次数', count('searches'), 'number', '逻辑搜索请求；重试不重复计数。', old ? n(old.searches) : null), card('starts', '成功起播', count('starts'), 'number', '确认首帧的播放尝试。', old ? n(old.starts) : null), card('watch', '有效播放时长', count('watch_ms'), 'duration', '实际播放累计，排除暂停、缓冲与跳转；包含后台播放。', old ? n(old.watch_ms) : null), card('success', '起播成功率', percent(count('starts'), count('attempts') - count('cancelled')), 'percent', '成功起播／剔除首帧前主动退出后的尝试；未确认仍计入分母。', old ? percent(n(old.starts), n(old.attempts) - n(old.cancelled)) : null), card('sessions', '访问次数', count('sessions'), 'number', '连续30分钟无活动后开始新会话。', old ? n(old.sessions) : null)];
       report.tables.push(await table(c, f, 'searches', '大家在搜', `SELECT query_text,COUNT(*) searches,SUM(status='empty') empty_results,SUM(status='error') failures FROM analytics_events WHERE ${e.sql} AND kind='search' GROUP BY query_text ORDER BY searches DESC,query_text`, e.values, [col('query_text', '关键词'), col('searches', '搜索', 'number'), col('empty_results', '无结果', 'number'), col('failures', '失败', 'number')]));
     } else if (f.view === 'traffic') {
+      const access = `${e.sql} AND kind IN ('page_view','session_start')`;
+      const metricsSql = "SUM(kind='page_view') views,COUNT(DISTINCT visitor_id) visitors,COUNT(DISTINCT NULLIF(network_ip,'')) ips,COUNT(DISTINCT session_id) sessions";
+      const geoRows = await rows(c, `SELECT CASE WHEN province<>'' THEN province WHEN country='CN' THEN 'CN' WHEN country<>'' THEN 'overseas' ELSE 'unknown' END region,${metricsSql} FROM analytics_events WHERE ${access} GROUP BY region`, e.values);
+      const geoTotal = (await rows(c, `SELECT ${metricsSql} FROM analytics_events WHERE ${access}`, e.values))[0];
+      const geographyStart = health.geography_started_at ? String(health.geography_started_at).replace(' ', 'T') + 'Z' : null;
+      report.geography = geographyReport(geoRows, { views: n(geoTotal.views), visitors: n(geoTotal.visitors), ips: n(geoTotal.ips), sessions: n(geoTotal.sessions) }, geographyStart);
+      const provinceNames = PROVINCES.map(([code, name]) => `WHEN '${code}' THEN '${name}'`).join(' ');
+      report.tables.push(await table(c, f, 'ips', '访问 IP 明细', `SELECT network_ip,country,CASE province ${provinceNames} ELSE IF(country='CN','国内省份未知',IF(country='','未知','境外')) END province_name,SUM(kind='page_view') views,COUNT(DISTINCT visitor_id) visitors,COUNT(DISTINCT session_id) sessions,MIN(occurred_at) first_seen,MAX(occurred_at) last_seen FROM analytics_events WHERE ${access} AND network_ip<>'' GROUP BY network_ip,country,province ORDER BY last_seen DESC,network_ip`, e.values, [col('network_ip', 'IP 地址'), col('country', '地区代码'), col('province_name', '省份／地区'), col('views', '浏览 PV', 'number'), col('visitors', '设备 UV', 'number'), col('sessions', '访问次数', 'number'), col('first_seen', '首次访问（UTC）'), col('last_seen', '最后访问（UTC）')], '完整 IP 仅管理员可见，保留90天。同一 IP 可有多个设备；代理、移动网络会影响归属，同一IP归属变化时分行展示。'));
+      report.notices.push('IP 和省份按访问事件的服务器收集时网络归属统计；IP不等于人数。省份和设备/IP的区间去重不可直接相加；历史缺失归属单列未知，不回填。' + (geographyStart ? ` IP/地域采集从 ${new Date(geographyStart).toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai', hour12: false })}（北京时间）启用。` : ' IP/地域采集尚无正式启用时间。'));
       const [start, end] = bounds(f);
       const fresh = (await rows(c, `SELECT COUNT(DISTINCT e.visitor_id) total FROM analytics_events e JOIN analytics_visitors v ON v.visitor_id=e.visitor_id WHERE ${where(f, 'occurred_at', { alias: 'e' }).sql} AND v.first_seen>=? AND v.first_seen<?`, [...where(f, 'occurred_at', { alias: 'e' }).values, start, end]))[0];
       const active = (await rows(c, 'SELECT COUNT(DISTINCT visitor_id) total FROM analytics_visitors WHERE is_test=? AND last_seen>=?', [f.test ? 1 : 0, sqlDate(Date.now() - 300000)]))[0];
       report.cards = [card('views', '页面浏览 PV', count('views'), 'number', '页面打开和有效路由切换，不包含接口请求。'), card('visitors', '访问设备 UV', count('visitors'), 'number', '区间内匿名浏览器去重。'), card('sessions', '访问次数', count('sessions'), 'number', '连续30分钟无活动后开始新会话。'), card('new', '首次访问设备', n(fresh.total), 'number', '在已保留的设备标识记录中首次出现。'), card('return', '回访设备', Math.max(0, count('visitors') - n(fresh.total)), 'number', '所选范围之前已经出现的设备；清理浏览器数据会影响判断。'), card('active', '最近5分钟活跃', n(active.total), 'number', '全站当前估算值，不受日期与设备筛选影响，并非精确在线人数。')];
+      report.cards.push(card('ips', '去重 IP', geographyStart && f.to >= businessDay(Date.parse(geographyStart)) ? n(geoTotal.ips) : null, 'number', '所选范围访问事件中IPv4/IPv6地址去重；共享出口可能共用IP，旧数据未保存IP。'));
       report.tables.push(await table(c, f, 'channels', '入口与来源', `SELECT page,COALESCE(NULLIF(referrer,''),'直接访问') referrer,COALESCE(NULLIF(campaign,''),'—') campaign,COUNT(*) views,COUNT(DISTINCT visitor_id) visitors FROM analytics_events WHERE ${e.sql} AND kind='page_view' GROUP BY page,referrer,campaign ORDER BY views DESC,page`, e.values, [col('page', '页面'), col('referrer', '来源域名'), col('campaign', '渠道'), col('views', 'PV', 'number'), col('visitors', '设备', 'number')]));
       report.tables.push(await table(c, f, 'devices', '设备与浏览器', `SELECT device,browser,COUNT(*) events,COUNT(DISTINCT visitor_id) visitors FROM analytics_events WHERE ${e.sql} GROUP BY device,browser ORDER BY visitors DESC`, e.values, [col('device', '设备'), col('browser', '浏览器'), col('visitors', '访问设备', 'number'), col('events', '行为事件', 'number')]));
       report.tables.push(await table(c, f, 'hours', '北京时间小时分布', `SELECT HOUR(DATE_ADD(occurred_at,INTERVAL 8 HOUR)) hour,SUM(kind='page_view') views,SUM(kind='search') searches,COUNT(DISTINCT visitor_id) visitors FROM analytics_events WHERE ${e.sql} GROUP BY hour ORDER BY hour`, e.values, [col('hour', '小时', 'number'), col('views', 'PV', 'number'), col('searches', '搜索', 'number'), col('visitors', '设备', 'number')]));
@@ -193,6 +204,12 @@ export function reportCsv(report: AnalyticsReport): string {
     return `"${text.replace(/"/g, '""')}"`;
   };
   const lines: string[] = [[report.view, report.from, report.to, 'Asia/Shanghai', '当前页'].map(cell).join(',')];
+  if (report.geography) {
+    lines.push('', cell('全国省份（完整34项，不受分页限制）'), ['省份', '浏览量PV', '设备UV', '去重IP', '会话数'].map(cell).join(','));
+    for (const row of [...report.geography.provinces, { name: '境外', ...report.geography.overseas }, { name: '国内省份未知', ...report.geography.unlocated }, { name: '地区未知', ...report.geography.unknown }]) lines.push([row.name, row.views, row.visitors, row.ips, row.sessions].map(cell).join(','));
+    const all = report.geography.total;
+    lines.push(['全局去重总计（非各省相加）', all.views, all.visitors, all.ips, all.sessions].map(cell).join(','));
+  }
   for (const table of report.tables) {
     lines.push('', cell(table.title), table.columns.map(column => cell(column.label + (column.format === 'duration' || column.format === 'milliseconds' ? '（毫秒）' : column.format === 'percent' ? '（%）' : column.format === 'bytes' ? '（字节）' : ''))).join(','));
     for (const row of table.rows) lines.push(table.columns.map(column => cell(row[column.key])).join(','));

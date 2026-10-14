@@ -32,8 +32,11 @@ test.skipIf(!enabled)('real TLS database: deduplication, ordered snapshots, owne
     event('playback', { media: 'vod', sourceKey, sourceName: '验收片源', sourceOrigin: 'site', attemptId, watchId: id(), searchId, startedAt: now - 60000, sequence: 2, playbackStatus: 'playing', playedMs: 40000, hiddenPlayedMs: 10000, bufferMs: 2000, bufferCount: 1, firstFrameMs: 500, firstFrameMethod: 'frame', title: '隔离验收影片', vodId: 'test', episode: 0 })];
   const events = validateEvents(raw, now);
   const dimensions = { device: 'desktop', browser: 'Chrome' };
-  expect(await ingestEvents(events, identity, dimensions)).toEqual({ accepted: 4, duplicates: 0 });
-  expect(await ingestEvents(events, identity, dimensions)).toEqual({ accepted: 0, duplicates: 4 });
+  const network = { ip: '192.0.2.44', country: 'CN', province: '44' };
+  expect(await ingestEvents(events, identity, dimensions, network)).toEqual({ accepted: 4, duplicates: 0 });
+  expect(await ingestEvents(events, identity, dimensions, { ...network, province: '33' })).toEqual({ accepted: 0, duplicates: 4 });
+  const [geo] = await analyticsPool().query<RowDataPacket[]>('SELECT network_ip,country,province FROM analytics_events WHERE event_id=?', [raw[0].id]);
+  expect(geo[0]).toMatchObject({ network_ip: '192.0.2.44', country: 'CN', province: '44' });
   const stale = validateEvents([{ ...raw[3], id: id(), sequence: 1, playedMs: 10, hiddenPlayedMs: 0, playbackStatus: 'loading' }], now);
   await ingestEvents(stale, identity, dimensions);
   const regressive = validateEvents([{ ...raw[3], id: id(), sequence: 3, playedMs: 0, hiddenPlayedMs: 0, bufferMs: 50000 }], now);
@@ -62,6 +65,13 @@ test.skipIf(!enabled)('real TLS database: deduplication, ordered snapshots, owne
     expect(report.view).toBe(view);
     expect(report.cards.length).toBeGreaterThan(0);
     expect(reportCsv(report)).toContain('Asia/Shanghai');
+    if (view === 'traffic') {
+      expect(report.geography?.provinces).toHaveLength(34);
+      expect(report.geography?.provinces.find(row => row.code === '44')).toMatchObject({ views: 1, ips: 1, visitors: 1 });
+      expect(report.tables.find(t => t.key === 'ips')?.rows).toContainEqual(expect.objectContaining({ network_ip: '192.0.2.44', province_name: '广东' }));
+      expect(reportCsv(report)).toContain('全国省份（完整34项，不受分页限制）');
+      expect(reportCsv(report)).toContain('192.0.2.44');
+    }
   }
   const source = events[3].sourceKey;
   for (const query of [`view=search&media=vod&source=${source}`, 'view=quality&device=desktop&browser=Chrome&page=2', 'view=overview&from=' + businessDay(now - 100 * 86400000)]) {
@@ -73,4 +83,13 @@ test.skipIf(!enabled)('real TLS database: deduplication, ordered snapshots, owne
       expect(report.cards.find(c => c.key === 'play')?.value).toBe(100);
     }
   }
+  await ingestEvents(validateEvents([event('page_view', { page: '/' })], now), identity, dimensions, { ...network, province: '33' });
+  await ingestEvents(validateEvents([event('page_view', { page: '/' })], now), identity, dimensions, { ip: '2001:db8::1', country: 'US', province: '' });
+  const regional = await analyticsReport(parseReportFilter(new URL('http://localhost?test=1&view=traffic&page=2')));
+  expect(regional.geography?.total).toEqual({ views: 3, ips: 2, visitors: 1, sessions: 1 });
+  expect(regional.geography?.provinces.find(row => row.code === '33')).toMatchObject({ views: 1, ips: 1, visitors: 1 });
+  expect(regional.geography?.overseas).toEqual({ views: 1, ips: 1, visitors: 1, sessions: 1 });
+  expect(regional.tables.find(t => t.key === 'ips')).toMatchObject({ rows: [], total: 3, page: 2 });
+  const mobile = await analyticsReport(parseReportFilter(new URL('http://localhost?test=1&view=traffic&device=mobile')));
+  expect(mobile.geography?.total.views).toBe(0);
 }, 90000);

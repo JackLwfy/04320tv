@@ -1,0 +1,63 @@
+.panel { background: #141e19; border: 1px solid #36483c; border-radius: 5px; margin-bottom: 22px; overflow: hidden; }
+.heading { display: flex; justify-content: space-between; align-items: center; gap: 24px; padding: 25px 26px 22px; }
+.eyebrow { display: block; color: #92b59e; font-size: 9px; letter-spacing: .21em; margin-bottom: 9px; }
+.heading h2 { font-size: 25px; color: #eceddd; }
+.heading p { color: #aabcae; font-size: 11px; margin-top: 9px; line-height: 1.8; }
+.metrics { display: flex; padding: 4px; border: 1px solid #3b5042; border-radius: 5px; gap: 2px; background: #101913; flex-shrink: 0; }
+.metrics button { min-height: 42px; padding: 8px 13px; color: #b6c4b6; font-size: 11px; border-radius: 3px; }
+.metrics button span { font-size: 9px; margin-left: 6px; opacity: .72; }
+.metrics button[aria-pressed='true'] { color: #edf4df; background: #304a3a; box-shadow: inset 0 0 0 1px #56775d; }
+.panel button:focus-visible, .panel summary:focus-visible, .panel a:focus-visible { outline: 2px solid #e9d4a3; outline-offset: 3px; }
+.summary { display: grid; grid-template-columns: repeat(3, 1fr); border-block: 1px solid #304435; background: #19261e; }
+.summary > div { padding: 17px 26px; border-right: 1px solid #304435; }
+.summary > div:last-child { border: 0; }
+.summary span { display: block; color: #aabca9; font-size: 10px; margin-bottom: 7px; }
+.summary strong { font-family: Georgia, serif; color: #e0eacc; font-size: 28px; font-weight: 400; }
+.summary small { font-family: inherit; font-size: 12px; margin-left: 3px; color: #a3b49b; }
+.body { display: grid; grid-template-columns: minmax(0, 1.85fr) minmax(240px, 1fr); }
+.mapWrap { min-width: 0; padding: 22px 19px 15px; background: radial-gradient(ellipse at 45% 40%, #22392a55, transparent 65%); }
+.focus { display: flex; align-items: flex-start; justify-content: space-between; margin: 0 8px; min-height: 55px; gap: 10px; }
+.focus > div:last-child { text-align: right; }
+.focus span { display: block; color: #93aa97; font-size: 10px; }
+.focus strong { display: block; font-size: 17px; font-weight: 400; color: #dce6cf; margin: 5px 0; }
+.focus > div:last-child strong { font-family: Georgia, serif; font-size: 23px; margin-top: 0; }
+.map { display: block; width: 100%; height: auto; margin-top: 5px; }
+.region, .seaRegion { stroke: #63816d; stroke-width: .8px; vector-effect: non-scaling-stroke; stroke-linejoin: round; }
+.region { cursor: pointer; transition: fill .16s; }
+.region:hover, .region:focus, .selected { stroke: #ead9a5; stroke-width: 1.5px; outline: none; }
+.boundary { fill: none; stroke: #94ae95; stroke-width: 1px; vector-effect: non-scaling-stroke; pointer-events: none; }
+.inset { fill: #15231b; stroke: #415b46; stroke-width: 1; }
+.mapLabel { fill: #9cb39e; font-size: 10px; }
+.legend { display: flex; justify-content: center; align-items: center; gap: 9px; font-size: 9px; color: #9fb39f; }
+.legend > span { display: flex; align-items: center; gap: 6px; }
+.legend > div { display: flex; gap: 2px; }
+.legend i { display: inline-block; width: 18px; height: 7px; border-radius: 1px; }
+.legend > span i { border: 1px solid #5b7360; }
+.mapSource { text-align: center; color: #91a796; font-size: 9px; margin-top: 13px; line-height: 1.8; }
+.mapSource a { text-decoration: underline; text-underline-offset: 3px; }
+.rank { padding: 25px 24px 17px; border-left: 1px solid #304435; min-width: 0; }
+.rankHeading { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 17px; }
+.rankHeading h3 { color: #dce4cd; font-size: 14px; font-weight: 400; }
+.rankHeading > span { color: #9db09a; font-size: 9px; white-space: nowrap; }
+.rank ol { list-style: none; padding: 0; margin: 0; }
+.rank li button { display: flex; align-items: center; gap: 11px; text-align: left; width: 100%; min-height: 43px; padding: 7px 0; border-radius: 2px; }
+.rank li button:hover, .rank li button[aria-pressed='true'] { background: #26372b; }
+.rankNumber { color: #829f86; font-size: 10px; font-family: Georgia, serif; }
+.rankName { color: #cbd8c4; font-size: 11px; flex: 1; min-width: 0; }
+.bar { display: block; height: 3px; background: #273a2d; margin-top: 8px; border-radius: 2px; overflow: hidden; }
+.bar i { display: block; height: 100%; background: linear-gradient(90deg, #477a60, #b4ddbd); border-radius: inherit; }
+.rank button strong { color: #dde9ce; font-family: Georgia, serif; font-size: 14px; font-weight: 400; font-variant-numeric: tabular-nums; }
+.unmapped { border-top: 1px solid #354b3b; padding-top: 14px; margin-top: 18px; }
+.unmapped > div { display: flex; justify-content: space-between; gap: 12px; font-size: 10px; color: #a8bba7; padding: 6px 0; }
+.unmapped strong { font-weight: 400; color: #d3dec5; font-variant-numeric: tabular-nums; }
+.empty { color: #a9bdac; line-height: 2; font-size: 12px; padding: 40px 0; }
+.notes { border-top: 1px solid #304435; padding: 14px 26px; color: #a1b49e; font-size: 10px; line-height: 1.9; }
+.notes p + p { margin-top: 3px; }
+.details { border-top: 1px solid #304435; }
+.details summary { cursor: pointer; padding: 15px 26px; font-size: 11px; color: #d0ddc5; }
+.details summary span { float: right; font-size: 9px; color: #9fb09c; }
+.tableScroll { overflow-x: auto; }
+.srOnly { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; }
+@media (max-width: 900px) { .heading { align-items: flex-start; flex-direction: column; gap: 16px; } .body { grid-template-columns: minmax(0, 1fr); } .rank { border-left: 0; border-top: 1px solid #304435; } .rank ol { display: grid; grid-template-columns: 1fr 1fr; gap: 0 25px; } .unmapped { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; } .unmapped > div { flex-direction: column; gap: 4px; } }
+@media (max-width: 600px) { .heading { padding: 21px 16px; } .heading h2 { font-size: 23px; } .metrics { width: 100%; } .metrics button { flex: 1; padding-inline: 7px; } .summary > div { padding: 14px 10px; } .summary span { font-size: 9px; line-height: 1.7; min-height: 30px; } .summary strong { font-size: 23px; } .summary small { font-size: 10px; } .mapWrap { padding: 18px 8px; } .focus strong { font-size: 15px; } .rank { padding: 20px 16px; } .rank ol { gap: 0 18px; } .rank li button { gap: 7px; } .notes { padding: 13px 16px; } .details summary { padding: 15px 16px; } .details summary span { display: none; } }
+@media (prefers-reduced-motion: reduce) { .region { transition: none; } }

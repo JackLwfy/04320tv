@@ -3,6 +3,7 @@ import { guardRequest } from '@/lib/api-guard';
 import { analyticsEnabled, analyticsOrigin, verifyAnalyticsToken } from '@/lib/analytics-auth';
 import { analyticsRateLimit, ingestEvents, recordRejected } from '@/lib/analytics-ingest';
 import { clientDimensions, validateEvents } from '@/lib/analytics-validation';
+import { analyticsNetwork } from '@/lib/analytics-geography';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -20,7 +21,9 @@ export async function POST(req: Request) {
     let events;
     try { events = validateEvents(body.events); }
     catch { if (!identity.test) await recordRejected(); return adminJson({ error: '统计事件无效或已过期。' }, 400); }
-    const result = await ingestEvents(events, identity, clientDimensions(req.headers.get('user-agent') || ''));
+    const network = analyticsNetwork(req.headers);
+    if (!network.ip) return adminJson({ error: '无法核验统计请求。' }, 503);
+    const result = await ingestEvents(events, identity, clientDimensions(req.headers.get('user-agent') || ''), network);
     return adminJson(result);
   } catch { return adminJson({ error: '统计保存暂未确认，请稍后重试。' }, 503); }
 }

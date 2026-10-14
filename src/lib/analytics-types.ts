@@ -41,4 +41,12 @@ export interface AnalyticsReport {
   enabled: boolean; lastEventAt: string | null; cards: AnalyticsCard[];
   trend: AnalyticsTrend[]; tables: AnalyticsTable[]; notices: string[];
   sources: { key: string; name: string }[];
+  geography?: AnalyticsGeography;
+}
+
+export interface AnalyticsGeoMetrics { views: number; visitors: number; ips: number; sessions: number }
+export interface AnalyticsGeography {
+  provinces: (AnalyticsGeoMetrics & { code: string; name: string })[];
+  unknown: AnalyticsGeoMetrics; overseas: AnalyticsGeoMetrics; unlocated: AnalyticsGeoMetrics;
+  total: AnalyticsGeoMetrics; startedAt: string | null;
 }

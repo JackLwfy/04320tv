@@ -2,10 +2,11 @@
 CREATE TABLE IF NOT EXISTS analytics_meta (
   id TINYINT UNSIGNED PRIMARY KEY,
   schema_version INT UNSIGNED NOT NULL,
+  geography_started_at DATETIME(3) NULL,
   enabled TINYINT UNSIGNED NOT NULL DEFAULT 1,
   created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-INSERT IGNORE INTO analytics_meta (id, schema_version) VALUES (1, 1);
+INSERT IGNORE INTO analytics_meta (id, schema_version) VALUES (1, 2);
 
 CREATE TABLE IF NOT EXISTS analytics_receipts (
   event_id CHAR(36) CHARACTER SET ascii PRIMARY KEY,
@@ -44,6 +45,9 @@ CREATE TABLE IF NOT EXISTS analytics_events (
   campaign VARCHAR(80) NOT NULL DEFAULT '',
   error_code VARCHAR(64) NOT NULL DEFAULT '',
   recommendation_id VARCHAR(100) NOT NULL DEFAULT '',
+  network_ip VARCHAR(45) CHARACTER SET ascii NOT NULL DEFAULT '',
+  country CHAR(2) CHARACTER SET ascii NOT NULL DEFAULT '',
+  province CHAR(2) CHARACTER SET ascii NOT NULL DEFAULT '',
   INDEX event_time (is_test, occurred_at),
   INDEX event_kind_time (is_test, kind, occurred_at),
   INDEX event_source_time (is_test, source_key, occurred_at),

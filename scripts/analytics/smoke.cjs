@@ -31,7 +31,8 @@ async function main() {
   const now = Date.now(); const searchId = crypto.randomUUID(); eventIds.push(searchId);
   const event = (type, extra = {}) => ({ id: crypto.randomUUID(), type, at: now, ...extra });
   const events = [event('page_view', { page: '/' }), event('search', { media: 'vod', searchId, query: 'QA-isolated', searchStatus: 'success', resultCount: 1 }), event('search_click', { media: 'vod', searchId }), event('playback', { media: 'vod', sourceKey: 'acceptance-smoke', sourceName: '验收测试', attemptId: crypto.randomUUID(), watchId: crypto.randomUUID(), searchId, startedAt: now - 60000, sequence: 1, playbackStatus: 'ended', playedMs: 40000, firstFrameMs: 450, firstFrameMethod: 'frame', title: 'QA-isolated', vodId: 'test', episode: 0 })];
-  const response = await request('/api/analytics/collect', { token: session.token, events });
+  // The platform middleware must replace caller-supplied geography and IP claims.
+  const response = await request('/api/analytics/collect', { token: session.token, events, ip: '203.0.113.6', province: '11' }, adminCookie, { 'x-04320-geo-country': 'ZZ', 'x-04320-geo-region': 'fake', 'eo-connecting-ip': '203.0.113.6' });
   assert.equal(response.status, 200, 'Collect HTTP status');
   assert.deepEqual(await response.json(), { accepted: 4, duplicates: 0 });
   const duplicate = await request('/api/analytics/collect', { token: session.token, events });
@@ -44,6 +45,16 @@ async function main() {
     assert.equal(reportResponse.status, 200, `Report ${view}`);
     const report = await reportResponse.json();
     assert.equal(report.view, view); assert.ok(report.cards.length);
+    if (view === 'traffic') {
+      assert.equal(report.geography.provinces.length, 34);
+      const ip = report.tables.find(t => t.key === 'ips').rows.find(row => row.network_ip);
+      assert.ok(ip, 'Server-collected IP must be reported');
+      if (origin.startsWith('https:')) {
+        assert.notEqual(ip.network_ip, '203.0.113.6', 'Caller cannot override edge IP');
+        assert.ok(ip.country && ip.country !== 'ZZ', 'Native edge geography must replace caller headers');
+      }
+      console.log('GEOGRAPHY_OK', '34 provinces', 'server IP verified', 'country:', ip.country || 'local unknown', 'region:', ip.province_name);
+    }
     console.log('REPORT_OK', view, `${Date.now() - started}ms`, report.tables.length, 'tables');
   }
   const csv = await request('/api/admin/analytics?test=1&view=search&format=csv');

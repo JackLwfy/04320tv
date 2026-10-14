@@ -3,6 +3,7 @@ import { type PoolConnection, type RowDataPacket } from 'mysql2/promise';
 import { analyticsPool } from './analytics-db';
 import { type AnalyticsIdentity, rateBucket, visitorHash } from './analytics-auth';
 import { businessDay, sqlDate, type ValidEvent } from './analytics-validation';
+import type { AnalyticsNetwork } from './analytics-geography';
 
 export async function analyticsRateLimit(key: string, limit: number, now = Date.now()) {
   const pool = analyticsPool();
@@ -20,7 +21,7 @@ export async function recordRejected() {
   try { await analyticsPool().query({ sql: 'INSERT INTO analytics_ingest_daily (day,rejected) VALUES (?,1) ON DUPLICATE KEY UPDATE rejected=rejected+1', timeout: 2000 }, [businessDay()]); } catch { /* A failed metric must not create a second failure. */ }
 }
 
-export async function ingestEvents(events: ValidEvent[], identity: AnalyticsIdentity, dimensions: { device: string; browser: string }) {
+export async function ingestEvents(events: ValidEvent[], identity: AnalyticsIdentity, dimensions: { device: string; browser: string }, network: AnalyticsNetwork = { ip: '', country: '', province: '' }) {
   const connection = await analyticsPool().getConnection();
   const visitor = visitorHash(identity.visitor, identity.test);
   const batch = crypto.randomUUID();
@@ -40,8 +41,8 @@ export async function ingestEvents(events: ValidEvent[], identity: AnalyticsIden
     const facts = accepted.filter(e => e.type !== 'playback');
     if (facts.length) {
       await query(connection, `INSERT IGNORE INTO analytics_events
-        (event_id,occurred_at,visitor_id,session_id,kind,is_test,media,device,browser,source_key,source_name,source_origin,vod_id,title,episode,search_id,query_text,status,result_count,duration_ms,page,referrer,campaign,error_code,recommendation_id) VALUES ?`,
-      [facts.map(e => [e.id, sqlDate(e.at), visitor, identity.session, e.type, isTest, e.media || '', dimensions.device, dimensions.browser, e.sourceKey, e.sourceName || '', e.sourceOrigin || '', e.vodId || '', e.title || '', e.episode ?? null, e.searchId || null, e.query || '', e.searchStatus || '', e.resultCount || 0, e.durationMs || 0, e.page || '', e.referrer || '', e.campaign || '', e.errorCode || '', e.recommendationId || ''])]);
+        (event_id,occurred_at,visitor_id,session_id,kind,is_test,media,device,browser,source_key,source_name,source_origin,vod_id,title,episode,search_id,query_text,status,result_count,duration_ms,page,referrer,campaign,error_code,recommendation_id,network_ip,country,province) VALUES ?`,
+      [facts.map(e => [e.id, sqlDate(e.at), visitor, identity.session, e.type, isTest, e.media || '', dimensions.device, dimensions.browser, e.sourceKey, e.sourceName || '', e.sourceOrigin || '', e.vodId || '', e.title || '', e.episode ?? null, e.searchId || null, e.query || '', e.searchStatus || '', e.resultCount || 0, e.durationMs || 0, e.page || '', e.referrer || '', e.campaign || '', e.errorCode || '', e.recommendationId || '', network.ip, network.country, network.province])]);
     }
     const outcomes = accepted.flatMap(e => (e.outcomes || []).map(o => [e.searchId, o.sourceKey, o.sourceName, o.sourceOrigin || 'custom', sqlDate(e.at), isTest, dimensions.device, dimensions.browser, o.status, o.durationMs, o.resultCount, o.errorCode || '']));
     if (outcomes.length) await query(connection, 'INSERT IGNORE INTO analytics_search_sources (search_id,source_key,source_name,source_origin,occurred_at,is_test,device,browser,status,duration_ms,result_count,error_code) VALUES ?', [outcomes]);
