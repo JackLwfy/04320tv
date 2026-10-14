@@ -32,11 +32,11 @@ test.skipIf(!enabled)('real TLS database: deduplication, ordered snapshots, owne
     event('playback', { media: 'vod', sourceKey, sourceName: '验收片源', sourceOrigin: 'site', attemptId, watchId: id(), searchId, startedAt: now - 60000, sequence: 2, playbackStatus: 'playing', playedMs: 40000, hiddenPlayedMs: 10000, bufferMs: 2000, bufferCount: 1, firstFrameMs: 500, firstFrameMethod: 'frame', title: '隔离验收影片', vodId: 'test', episode: 0 })];
   const events = validateEvents(raw, now);
   const dimensions = { device: 'desktop', browser: 'Chrome' };
-  const network = { ip: '192.0.2.44', country: 'CN', province: '44' };
+  const network = { ip: '192.0.2.44', country: 'CN', province: '44', city: 'Guangzhou', asn: 4134, operator: '中国电信' };
   expect(await ingestEvents(events, identity, dimensions, network)).toEqual({ accepted: 4, duplicates: 0 });
   expect(await ingestEvents(events, identity, dimensions, { ...network, province: '33' })).toEqual({ accepted: 0, duplicates: 4 });
-  const [geo] = await analyticsPool().query<RowDataPacket[]>('SELECT network_ip,country,province FROM analytics_events WHERE event_id=?', [raw[0].id]);
-  expect(geo[0]).toMatchObject({ network_ip: '192.0.2.44', country: 'CN', province: '44' });
+  const [geo] = await analyticsPool().query<RowDataPacket[]>('SELECT network_ip,country,province,city,network_asn,network_operator FROM analytics_events WHERE event_id=?', [raw[0].id]);
+  expect(geo[0]).toMatchObject({ network_ip: '192.0.2.44', country: 'CN', province: '44', city: 'Guangzhou', network_asn: 4134, network_operator: '中国电信' });
   const stale = validateEvents([{ ...raw[3], id: id(), sequence: 1, playedMs: 10, hiddenPlayedMs: 0, playbackStatus: 'loading' }], now);
   await ingestEvents(stale, identity, dimensions);
   const regressive = validateEvents([{ ...raw[3], id: id(), sequence: 3, playedMs: 0, hiddenPlayedMs: 0, bufferMs: 50000 }], now);
@@ -83,7 +83,7 @@ test.skipIf(!enabled)('real TLS database: deduplication, ordered snapshots, owne
       expect(report.cards.find(c => c.key === 'play')?.value).toBe(100);
     }
   }
-  await ingestEvents(validateEvents([event('page_view', { page: '/' })], now), identity, dimensions, { ...network, province: '33' });
+  await ingestEvents(validateEvents([event('page_view', { page: '/' })], now), identity, dimensions, { ...network, province: '33', city: 'Hangzhou', asn: 4837, operator: '中国联通' });
   await ingestEvents(validateEvents([event('page_view', { page: '/' })], now), identity, dimensions, { ip: '2001:db8::1', country: 'US', province: '' });
   const regional = await analyticsReport(parseReportFilter(new URL('http://localhost?test=1&view=traffic&page=2')));
   expect(regional.geography?.total).toEqual({ views: 3, ips: 2, visitors: 1, sessions: 1 });
@@ -92,4 +92,14 @@ test.skipIf(!enabled)('real TLS database: deduplication, ordered snapshots, owne
   expect(regional.tables.find(t => t.key === 'ips')).toMatchObject({ rows: [], total: 3, page: 2 });
   const mobile = await analyticsReport(parseReportFilter(new URL('http://localhost?test=1&view=traffic&device=mobile')));
   expect(mobile.geography?.total.views).toBe(0);
-}, 90000);
+  const selected = await analyticsReport(parseReportFilter(new URL('http://localhost?test=1&view=traffic&province=44')));
+  expect(selected.province).toBe('44');
+  expect(selected.geography?.total.views).toBe(3);
+  expect(selected.tables.find(t => t.key === 'ips')?.rows).toEqual([expect.objectContaining({ province_name: '广东', city_name: 'Guangzhou', operator_name: '中国电信', asn: 4134, views: 1 })]);
+  expect(selected.tables.find(t => t.key === 'cities')?.rows).toEqual([expect.objectContaining({ province_name: '广东', city_name: 'Guangzhou', views: 1, ips: 1 })]);
+  expect(selected.tables.find(t => t.key === 'operators')?.rows).toEqual([expect.objectContaining({ operator_name: '中国电信', asns: 1, ips: 1 })]);
+  expect(reportCsv(selected)).toContain('明细省份:44');
+  const emptyProvince = await analyticsReport(parseReportFilter(new URL('http://localhost?test=1&view=traffic&province=54')));
+  expect(emptyProvince.geography?.total.views).toBe(3);
+  for (const key of ['ips', 'cities', 'operators']) expect(emptyProvince.tables.find(t => t.key === key)?.rows).toEqual([]);
+}, 120000);

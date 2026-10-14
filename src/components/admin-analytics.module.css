@@ -41,6 +41,14 @@
 .panelHeading h2, .errorPanel h2 { font-size: 23px; color: #edecdf; }
 .panelHeading p { font-size: 11px; color: var(--quiet); margin-top: 9px; line-height: 1.9; max-width: 780px; }
 .rowCount { font-size: 11px; color: var(--gold); white-space: nowrap; }
+.provinceFilter { display: flex; justify-content: space-between; align-items: center; gap: 18px; flex-wrap: wrap; padding: 17px 20px; margin: -6px 0 22px; border: 1px solid #445b44; border-radius: 4px; background: #1c2a20; }
+.provincePill { display: inline-block; color: #e7e4c5; border: 1px solid #708365; background: #304230; padding: 5px 10px; border-radius: 3px; font-size: 12px; }
+.provinceFilter p { margin-top: 9px; color: #b5c4aa; font-size: 10px; line-height: 1.9; }
+.provinceFilter button { border: 1px solid #66785a; color: #e1dbbb; font-size: 11px; min-height: 40px; padding: 8px 12px; border-radius: 3px; }
+.provinceFilter button span { margin-left: 8px; font-size: 16px; }
+.provinceFilter button:hover { background: #34462f; }
+.provinceFilter button:focus-visible, .ipDetails:focus-visible { outline: 2px solid #dec68c; outline-offset: 3px; }
+.ipDetails { scroll-margin-top: 110px; }
 .chart { padding: 0 14px; }
 .chart svg { width: 100%; height: auto; display: block; overflow: visible; }
 .chart text { fill: #a8b39f; font-size: 10px; }

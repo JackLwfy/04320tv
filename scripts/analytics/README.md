@@ -9,6 +9,8 @@
 - 浏览器匿名标识保存在签名 HttpOnly Cookie 中，数据库只存 HMAC 后的标识。测试访客使用独立哈希域，所有验收数据标记 `is_test=1`。
 - 「访问分析」提供全国34省级区域分布、PV/设备UV/去重IP切换、IP明细与CSV。`edge-functions/api/analytics/collect.js` 从平台原生 `request.eo` 读取客户端IP和省份，忽略浏览器同名字段/头；将60秒有效、绑定完整请求体的HMAC证明传给本站 `/api/analytics/ingest` 云函数，校验后直接TLS写库。Next.js由OpenNext适配，不使用平台通用middleware。参见[EdgeOne Request文档](https://edgeone.ai/document/52690)。IPv6规范化后去重，IPv4映射IPv6与IPv4统一计数。本地Next dev使用回环IP及未知地区，生产不允许无签名网络信息。
 - IP/省份仅随访问事实保存90天，完整IP只在受保护管理员报表中提供。地域基于IP网络出口，代理、VPN、移动网络与定位库可能造成偏差。省份不明、归属未知及境外单列，旧记录不回填；跨省设备/IP不能将各省去重数相加当成全国去重数。地域数据遵循日期/设备/浏览器筛选，不受分页限制。
+- 城市、ASN也从EdgeOne原生上下文读取并随请求体签名校验。点击地图、排行或省份表后，IP明细、城市统计和运营商表按省份筛选，并跳转到IP明细；地图、全国卡片和趋势保留全国口径。三张明细表仍支持日期/设备/浏览器、分页和CSV，导出明确标识所选省份。
+- 城市名使用平台原始值，可能为英文；未识别城市/ASN保留未知。运营商按IP所属ASN的网络组织识别，不等同于实际开户宽带商；离线快照包含CN/HK/MO/TW组织及识别到的中国运营商网络，其它网络保留明确AS编号。`analytics-operators.json`记录RIPE源地址、快照日期和SHA256，不向第三方发送访客IP。组织/ASN转让后需刷新快照；使用完整[RIPE ASN文件](https://ftp.ripe.net/ripe/asnames/asn.txt)执行单行 `node scripts/analytics/update-operators.cjs <下载的asn.txt路径>`，脚本校验完整源行数和主要运营商映射再生成。城市/运营商的UV、IP也不可跨组直接相加。
 - 访问次数以连续 30 分钟无活动划分。UV 是区间内浏览器去重数，不代表真实人数。
 - 搜索按逻辑 searchId 去重；正常无结果、部分失败、全部失败分开。点击/起播转化以范围内的搜索为基准，并核对匿名设备。显式重复搜索同一个词会产生新逻辑搜索；命中缓存时不伪造新的片源网络耗时样本。
 - 每个播放尝试保存最新累计快照。递增序号、所有累计值不回退、归属匿名设备一致才允许更新（保留最初会话，允许暂停后新访问继续累计）。观看时长排除暂停、跳转和缓冲，后台播放是其中的子集。
@@ -36,6 +38,8 @@ EdgeOne 仅服务器环境变量：`ANALYTICS_DB_HOST`、`ANALYTICS_DB_PORT`、`
 已有库升级IP/地域功能先执行已验证恢复的备份，再运行 `migrate-geography.py`（同目录需要维护脚本及SQL）；仅增加字段，不删除旧事实。线上部署成功并验证平台归属透传后，将 `analytics_meta.geography_started_at` 从NULL设置为当前UTC，保留首次启用时间。新库schema也包含这些字段。代码回滚可保留新增字段，旧版照常运行。
 
 手工覆盖本次增量包时，须删除旧文件 `src/app/api/analytics/collect/route.ts`；公开采集URL由原生边缘函数接管。Git部署自动处理该删除。部署验收通过后执行 `migrate-geography.py --activate`，幂等记录地域启用时间。
+
+升级城市/运营商统计先备份并验证恢复，再运行 `migrate-network-details.py`（同目录带SQL和维护脚本）。这是schema v3的加字段迁移，不回填旧数据；原生边缘函数与云函数上线验收通过后运行 `migrate-network-details.py --activate` 记录首次启用时间。省份旧迁移不会降低已有schema版本。
 
 在项目根目录运行以下单行命令。配置、API密钥及备份均在仓库外/忽略文件中，不随代码和ZIP发布。
 

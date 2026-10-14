@@ -58,6 +58,8 @@ export function AdminAnalytics() {
   const [source, setSource] = useState('');
   const [device, setDevice] = useState('all');
   const [browser, setBrowser] = useState('all');
+  const [province, setProvince] = useState('');
+  const [geographyMetric, setGeographyMetric] = useState<'views' | 'ips' | 'visitors'>('views');
   const [page, setPage] = useState(1);
   const [refresh, setRefresh] = useState(0);
   const [report, setReport] = useState<AnalyticsReport | null>(null);
@@ -67,10 +69,11 @@ export function AdminAnalytics() {
   const [exportError, setExportError] = useState('');
   const [exporting, setExporting] = useState(false);
   const exportRequest = useRef<AbortController | null>(null);
+  const provinceScroll = useRef(false);
   const hasMedia = ['overview', 'content', 'quality'].includes(view);
   const hasSource = ['search', 'content', 'quality'].includes(view);
   const hasAudience = view !== 'health';
-  const params = useMemo(() => new URLSearchParams({ view, ...range, media: hasMedia ? media : 'all', source: hasSource ? source : '', device: hasAudience ? device : 'all', browser: hasAudience ? browser : 'all', page: String(page) }).toString(), [view, range, hasMedia, media, hasSource, source, hasAudience, device, browser, page]);
+  const params = useMemo(() => new URLSearchParams({ view, ...range, media: hasMedia ? media : 'all', source: hasSource ? source : '', device: hasAudience ? device : 'all', browser: hasAudience ? browser : 'all', page: String(page), ...(view === 'traffic' ? { province } : {}) }).toString(), [view, range, hasMedia, media, hasSource, source, hasAudience, device, browser, page, province]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -87,6 +90,18 @@ export function AdminAnalytics() {
     return () => { active = false; clearTimeout(timeout); controller.abort(); };
   }, [params, refresh]);
   useEffect(() => () => exportRequest.current?.abort(), []);
+  useEffect(() => {
+    if (!provinceScroll.current || loading || !report || view !== 'traffic' || (report.province || '') !== province) return;
+    const detail = document.getElementById('analytics-ip-details');
+    if (!detail) return;
+    provinceScroll.current = false;
+    detail.scrollIntoView({ behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth', block: 'start' });
+    detail.focus({ preventScroll: true });
+  }, [loading, report, view, province]);
+
+  function selectProvince(code: string) {
+    setProvince(code); setPage(1); provinceScroll.current = true;
+  }
 
   async function download() {
     const controller = new AbortController(); exportRequest.current = controller;
@@ -106,7 +121,7 @@ export function AdminAnalytics() {
   const otherNotices = report?.notices.filter(notice => !importantNotices.includes(notice)) || [];
 
   return <div className={s.analytics}>
-    <nav className={s.tabs} aria-label="统计视图">{views.map(item => <button key={item.id} aria-pressed={view === item.id} className={view === item.id ? s.activeTab : ''} onClick={() => { setView(item.id); setPage(1); setSource(''); }}>{item.label}</button>)}</nav>
+    <nav className={s.tabs} aria-label="统计视图">{views.map(item => <button key={item.id} aria-pressed={view === item.id} className={view === item.id ? s.activeTab : ''} onClick={() => { setView(item.id); setPage(1); setSource(''); setProvince(''); provinceScroll.current = false; }}>{item.label}</button>)}</nav>
     <div className={s.intro}><p>{views.find(item => item.id === view)?.description}</p><span>北京时间 · {view === 'overview' ? '概览最多 13 个月' : '明细最多 90 天'}</span></div>
     <section className={s.filters} aria-label="统计筛选">
       <div className={s.filterRow}><div className={s.presets}>{[['1', '今日'], ['yesterday', '昨日'], ['7', '近 7 天'], ['30', '近 30 天'], ['custom', '自定义']].map(([id, label]) => <button key={id} aria-pressed={preset === id} onClick={() => { setPreset(id); setPage(1); if (id !== 'custom') setRange(analyticsRange(id === 'yesterday' ? 1 : Number(id), id === 'yesterday')); }}>{label}</button>)}</div><div className={s.actions}><button onClick={() => setRefresh(value => value + 1)} disabled={loading}>刷新</button><button className={s.export} onClick={download} disabled={loading || !report || exporting}>{exporting ? '正在导出…' : '导出本页 CSV ↗'}</button></div></div>
@@ -126,8 +141,8 @@ export function AdminAnalytics() {
         <section className={s.cards} aria-label="关键指标">{report.cards.map((card, index) => <article className={s.card} key={card.key}><span className={s.cardIndex}>{String(index + 1).padStart(2, '0')}</span><h2>{card.label}</h2><strong>{formatMetric(card.value, card.format)}</strong>{card.previous !== undefined && <span className={s.comparison}>上一等长时段：{formatMetric(card.previous, card.format)}</span>}<p>{card.help}</p></article>)}</section>
         {otherNotices.length > 0 && <details key={view} className={s.notices}><summary>数据口径与说明 <span>{otherNotices.length} 项 · 展开查看</span></summary><div>{otherNotices.map((notice, index) => <p key={index}>{notice}</p>)}</div></details>}
         {view !== 'health' && <Trend rows={report.trend} />}
-        {view === 'traffic' && <AdminGeography data={report.geography} />}
-        <div className={s.reports}>{report.tables.map(table => <section key={table.key} className={s.panel}><div className={s.panelHeading}><div><span className={s.eyebrow}>A CLOSER LOOK</span><h2>{table.title}</h2>{table.help && <p>{table.help}</p>}</div><span className={s.rowCount}>{table.total.toLocaleString('zh-CN')} 条</span></div><div className={s.tableScroll}><table><caption className={s.srOnly}>{table.title} · 第 {table.page} 页</caption><thead><tr>{table.columns.map(column => <th key={column.key} scope="col">{column.label}</th>)}</tr></thead><tbody>{table.rows.map((row, index) => <tr key={index}>{table.columns.map(column => <td key={column.key}>{formatMetric(row[column.key] ?? null, column.format)}</td>)}</tr>)}</tbody></table>{!table.rows.length && <p className={s.empty}>{table.total > 0 ? '此表在当前页没有记录，请查看前面的页码。' : '所选条件下暂无记录。'}</p>}</div></section>)}</div>
+        {view === 'traffic' && <><AdminGeography data={report.geography} selectedProvince={province} onProvinceChange={selectProvince} metricKey={geographyMetric} onMetricChange={setGeographyMetric} /><div className={s.provinceFilter} aria-label="访问明细省份筛选"><div><span className={s.provincePill}>{province ? report.geography?.provinces.find(row => row.code === province)?.name || province : '全国及其他地区'}</span><p>IP、城市与运营商明细{province ? '已按所选省份筛选' : '展示全部地区'}；上方地图、指标与趋势保持全国范围。</p></div>{province && <button onClick={() => selectProvince('')}>清除省份筛选 <span aria-hidden="true">×</span></button>}</div></>}
+        <div className={s.reports}>{report.tables.map(table => <section key={table.key} id={table.key === 'ips' ? 'analytics-ip-details' : undefined} tabIndex={table.key === 'ips' ? -1 : undefined} aria-label={table.title} className={`${s.panel} ${table.key === 'ips' ? s.ipDetails : ''}`}><div className={s.panelHeading}><div><span className={s.eyebrow}>A CLOSER LOOK</span><h2>{table.title}</h2>{table.help && <p>{table.help}</p>}</div><span className={s.rowCount}>{table.total.toLocaleString('zh-CN')} 条</span></div><div className={s.tableScroll}><table><caption className={s.srOnly}>{table.title} · 第 {table.page} 页</caption><thead><tr>{table.columns.map(column => <th key={column.key} scope="col">{column.label}</th>)}</tr></thead><tbody>{table.rows.map((row, index) => <tr key={index}>{table.columns.map(column => <td key={column.key}>{formatMetric(row[column.key] ?? null, column.format)}</td>)}</tr>)}</tbody></table>{!table.rows.length && <p className={s.empty}>{table.total > 0 ? '此表在当前页没有记录，请查看前面的页码。' : '所选条件下暂无记录。'}</p>}</div></section>)}</div>
         {report.tables.length > 0 && <div className={s.pagination}><p>各明细表使用同一页码；CSV 导出本页各表数据。</p><div><button disabled={page <= 1} onClick={() => setPage(value => value - 1)} aria-label="上一页">← 上一页</button><span>第 {page} / {maxPage} 页</span><button disabled={page >= maxPage} onClick={() => setPage(value => value + 1)} aria-label="下一页">下一页 →</button></div></div>}
         <p className={s.footerNote}>匿名设备不等同于真实人数。客户端事件可能漏报；接口可达、实际起播与邮件送达分别统计。</p>
       </>}

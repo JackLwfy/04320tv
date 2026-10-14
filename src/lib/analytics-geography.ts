@@ -1,5 +1,6 @@
 import { isIP } from 'node:net';
 import crypto from 'node:crypto';
+import operators from './analytics-operators.json';
 import type { AnalyticsGeography, AnalyticsGeoMetrics } from './analytics-types';
 
 // GB/T 2260 province-level codes, also used by the bundled map.
@@ -13,7 +14,13 @@ export const PROVINCES = [
   ['71', '台湾', 'Taiwan'], ['81', '香港', 'Hong Kong|Hongkong'], ['82', '澳门', 'Macao|Macau'],
 ] as const;
 
-export interface AnalyticsNetwork { ip: string; country: string; province: string }
+export interface AnalyticsNetwork { ip: string; country: string; province: string; city?: string; asn?: number; operator?: string }
+export function operatorForAsn(asn: number): string {
+  return asn ? (operators.operators as Record<string, string>)[String(asn)] || `AS${asn}` : '未知';
+}
+export function networkCity(value: unknown): string {
+  return typeof value === 'string' ? Array.from(value.trim().replace(/[\u0000-\u001f\u007f]/g, '')).slice(0, 96).join('') : '';
+}
 export function normalizeProvince(country: string, region: string, code: string): string {
   if (['HK', 'MO', 'TW'].includes(country)) return { HK: '81', MO: '82', TW: '71' }[country]!;
   if (country !== 'CN') return '';
@@ -51,7 +58,8 @@ export function verifiedAnalyticsNetwork(headers: Headers, body: unknown, now = 
     const data = JSON.parse(decodeURIComponent(proof));
     if (!Number.isSafeInteger(data.at) || data.at > now + 10000 || now - data.at > 60000 || typeof data.ip !== 'string' || typeof data.country !== 'string' || typeof data.region !== 'string' || typeof data.code !== 'string') return null;
     const network = analyticsNetwork(new Headers({ 'eo-connecting-ip': data.ip, 'x-04320-geo-country': data.country, 'x-04320-geo-region': encodeURIComponent(data.region), 'x-04320-geo-code': data.code }));
-    return network.ip ? network : null;
+    const asn = Number.isSafeInteger(data.asn) && data.asn > 0 && data.asn < 4294967295 ? data.asn : 0;
+    return network.ip ? { ...network, city: networkCity(data.city), asn, operator: operatorForAsn(asn) } : null;
   } catch { return null; }
 }
 

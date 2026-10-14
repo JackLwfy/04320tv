@@ -1,8 +1,23 @@
 import { describe, expect, it, vi, afterEach } from 'vitest';
-import { analyticsNetwork, geographyReport, normalizeProvince, PROVINCES } from './analytics-geography';
+import { analyticsNetwork, geographyReport, networkCity, normalizeProvince, operatorForAsn, PROVINCES } from './analytics-geography';
+import { parseReportFilter } from './analytics-report';
 
 afterEach(() => vi.unstubAllEnvs());
 describe('server IP and province attribution', () => {
+  it('labels known carrier ASNs, keeps unmapped AS numbers explicit and bounds city text', () => {
+    expect(operatorForAsn(4134)).toBe('中国电信');
+    expect(operatorForAsn(4837)).toBe('中国联通');
+    expect(operatorForAsn(9808)).toBe('中国移动');
+    expect(operatorForAsn(4294900000)).toBe('AS4294900000');
+    expect(operatorForAsn(0)).toBe('未知');
+    expect(networkCity(' Chengdu\n\u0000 ')).toBe('Chengdu');
+    expect(networkCity('城'.repeat(97))).toHaveLength(96);
+    expect(networkCity({ city: 'forged' })).toBe('');
+  });
+  it('accepts only real province codes for traffic drill-down', () => {
+    expect(parseReportFilter(new URL('https://example.test?view=traffic&province=51')).province).toBe('51');
+    for (const query of ['view=traffic&province=510000', 'view=traffic&province=99', 'view=traffic&province=51%27', 'view=overview&province=51']) expect(() => parseReportFilter(new URL(`https://example.test?${query}`))).toThrow('省份筛选无效');
+  });
   it.each([
     ['CN', '广东省', '', '44'], ['CN', 'Zhejiang', '', '33'], ['CN', 'Inner Mongolia', '', '15'],
     ['CN', '广西壮族自治区', '', '45'], ['CN', 'Tibet', '', '54'], ['CN', 'Shaanxi', '', '61'],

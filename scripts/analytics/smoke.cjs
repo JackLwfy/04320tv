@@ -32,7 +32,7 @@ async function main() {
   const event = (type, extra = {}) => ({ id: crypto.randomUUID(), type, at: now, ...extra });
   const events = [event('page_view', { page: '/' }), event('search', { media: 'vod', searchId, query: 'QA-isolated', searchStatus: 'success', resultCount: 1 }), event('search_click', { media: 'vod', searchId }), event('playback', { media: 'vod', sourceKey: 'acceptance-smoke', sourceName: '验收测试', attemptId: crypto.randomUUID(), watchId: crypto.randomUUID(), searchId, startedAt: now - 60000, sequence: 1, playbackStatus: 'ended', playedMs: 40000, firstFrameMs: 450, firstFrameMethod: 'frame', title: 'QA-isolated', vodId: 'test', episode: 0 })];
   // The platform middleware must replace caller-supplied geography and IP claims.
-  const response = await request('/api/analytics/collect', { token: session.token, events, ip: '203.0.113.6', province: '11' }, adminCookie, { 'x-04320-geo-country': 'ZZ', 'x-04320-geo-region': 'fake', 'eo-connecting-ip': '203.0.113.6' });
+  const response = await request('/api/analytics/collect', { token: session.token, events, ip: '203.0.113.6', province: '11', city: 'FakeCity', asn: 4294900000, operator: 'FakeOperator' }, adminCookie, { 'x-04320-geo-country': 'ZZ', 'x-04320-geo-region': 'fake', 'x-04320-geo-city': 'FakeCity', 'x-04320-geo-asn': '4294900000', 'eo-connecting-ip': '203.0.113.6' });
   assert.equal(response.status, 200, `Collect HTTP status (${response.headers.get('cache-control')})${response.ok ? '' : ': ' + await response.text()}`);
   assert.deepEqual(await response.json(), { accepted: 4, duplicates: 0 });
   const duplicate = await request('/api/analytics/collect', { token: session.token, events });
@@ -53,8 +53,26 @@ async function main() {
       if (origin.startsWith('https:')) {
         assert.notEqual(ip.network_ip, '203.0.113.6', 'Caller cannot override edge IP');
         assert.ok(ip.country && ip.country !== 'ZZ', 'Native edge geography must replace caller headers');
+        assert.ok(ip.city_name && ip.city_name !== '未知', 'Native city must be collected');
+        assert.ok(Number(ip.asn) > 0, 'Native ASN must be collected');
+        assert.ok(ip.operator_name && ip.operator_name !== '未知', 'ASN organization must be reported');
+        assert.notEqual(ip.city_name, 'FakeCity');
+        assert.notEqual(Number(ip.asn), 4294900000);
+        assert.notEqual(ip.operator_name, 'FakeOperator');
       }
-      console.log('GEOGRAPHY_OK', '34 provinces', 'server IP verified', 'country:', ip.country || 'local unknown', 'region:', ip.province_name);
+      console.log('GEOGRAPHY_OK', '34 provinces', 'server IP verified', 'region:', ip.province_name, 'city:', ip.city_name, 'operator:', ip.operator_name, 'asn:', ip.asn || 'local unknown');
+      const province = report.geography.provinces.find(p => p.name === ip.province_name);
+      if (province) {
+        const selected = await (await request(`/api/admin/analytics?test=1&view=traffic&province=${province.code}`)).json();
+        assert.equal(selected.province, province.code);
+        assert.equal(selected.geography.total.views, report.geography.total.views, 'Drill-down keeps the national map context');
+        for (const row of selected.tables.find(t => t.key === 'ips').rows) assert.equal(row.province_name, province.name);
+        assert.ok(selected.tables.find(t => t.key === 'cities').rows.length);
+        assert.ok(selected.tables.find(t => t.key === 'operators').rows.length);
+        const selectedCsv = await request(`/api/admin/analytics?test=1&view=traffic&province=${province.code}&format=csv`);
+        assert.ok((await selectedCsv.text()).includes(`明细省份:${province.code}`));
+        console.log('PROVINCE_DRILL_OK', province.name, 'IP/city/operator/CSV');
+      }
     }
     console.log('REPORT_OK', view, `${Date.now() - started}ms`, report.tables.length, 'tables');
   }

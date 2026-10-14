@@ -42,6 +42,7 @@ export interface AnalyticsReport {
   trend: AnalyticsTrend[]; tables: AnalyticsTable[]; notices: string[];
   sources: { key: string; name: string }[];
   geography?: AnalyticsGeography;
+  province?: string;
 }
 
 export interface AnalyticsGeoMetrics { views: number; visitors: number; ips: number; sessions: number }

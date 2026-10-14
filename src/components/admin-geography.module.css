@@ -35,6 +35,10 @@
 .legend > span i { border: 1px solid #5b7360; }
 .mapSource { text-align: center; color: #91a796; font-size: 9px; margin-top: 13px; line-height: 1.8; }
 .mapSource a { text-decoration: underline; text-underline-offset: 3px; }
+.drillHint { color: #c0d2b7; font-size: 10px; text-align: center; line-height: 1.9; margin: 15px 8px 0; }
+.provinceButton { color: #d3dfc6; min-height: 36px; text-align: left; padding: 5px 8px; margin: -5px -8px; border-radius: 3px; }
+.provinceButton span { margin-left: 6px; color: #a6c6aa; font-size: 10px; }
+.provinceButton:hover, .provinceButton[aria-pressed='true'] { background: #314837; color: #f1e4bf; }
 .rank { padding: 25px 24px 17px; border-left: 1px solid #304435; min-width: 0; }
 .rankHeading { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 17px; }
 .rankHeading h3 { color: #dce4cd; font-size: 14px; font-weight: 400; }

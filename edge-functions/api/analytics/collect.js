@@ -17,7 +17,7 @@ export async function onRequest(context) {
   } catch { return json('统计请求格式无效。', 400, `EDGE_BODY_${stage}_${length}`); }
   try {
     const geo = request.eo.geo || {};
-    const proof = encodeURIComponent(JSON.stringify({ ip: request.eo.clientIp, country: geo.countryCodeAlpha2 || '', region: geo.regionName || '', code: geo.regionCode || '', at: Date.now() }));
+    const proof = encodeURIComponent(JSON.stringify({ ip: request.eo.clientIp, country: geo.countryCodeAlpha2 || '', region: geo.regionName || '', code: geo.regionCode || '', city: geo.cityName || '', asn: Number(geo.asn) || 0, at: Date.now() }));
     const text = JSON.stringify(body);
     const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(env.ANALYTICS_INGEST_SECRET), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
     const mac = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(`edge-network\n${proof}\n${text}`));
