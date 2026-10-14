@@ -1,0 +1,35 @@
+// Next.js middleware is handled by OpenNext; native EO geo is available here.
+export async function onRequest(context) {
+  const { request, env } = context;
+  const json = (error, status) => new Response(JSON.stringify({ error }), { status, headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' } });
+  if (request.method !== 'POST') return json('仅支持POST。', 405);
+  if (!env.ADMIN_ORIGIN || request.headers.get('origin') !== env.ADMIN_ORIGIN || request.headers.get('content-type')?.split(';')[0] !== 'application/json') return json('请求来源无效。', 403);
+  if (!env.ANALYTICS_INGEST_SECRET || env.ANALYTICS_INGEST_SECRET.length < 32 || !request.eo?.clientIp) return json('统计地域服务暂不可用。', 503);
+  let body;
+  try {
+    const reader = request.body?.getReader();
+    if (!reader) return json('统计请求格式无效。', 400);
+    const chunks = []; let length = 0;
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      length += value.byteLength;
+      if (length > 32768) { await reader.cancel(); return json('统计请求过大。', 400); }
+      chunks.push(value);
+    }
+    const bytes = new Uint8Array(length); let offset = 0;
+    for (const chunk of chunks) { bytes.set(chunk, offset); offset += chunk.byteLength; }
+    body = JSON.parse(new TextDecoder().decode(bytes));
+  } catch { return json('统计请求格式无效。', 400); }
+  try {
+    const geo = request.eo.geo || {};
+    const proof = encodeURIComponent(JSON.stringify({ ip: request.eo.clientIp, country: geo.countryCodeAlpha2 || '', region: geo.regionName || '', code: geo.regionCode || '', at: Date.now() }));
+    const text = JSON.stringify(body);
+    const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(env.ANALYTICS_INGEST_SECRET), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+    const mac = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(`edge-network\n${proof}\n${text}`));
+    const signature = Array.from(new Uint8Array(mac), b => b.toString(16).padStart(2, '0')).join('');
+    const headers = new Headers({ 'Content-Type': 'application/json', Origin: env.ADMIN_ORIGIN, 'x-04320-network': proof, 'x-04320-network-signature': signature });
+    for (const name of ['user-agent', 'cookie']) if (request.headers.has(name)) headers.set(name, request.headers.get(name));
+    return await fetch(new URL('/api/analytics/ingest', env.ADMIN_ORIGIN), { method: 'POST', headers, body: text, redirect: 'error' });
+  } catch { return json('统计保存暂未确认，请稍后重试。', 503); }
+}

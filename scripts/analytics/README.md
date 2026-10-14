@@ -7,7 +7,7 @@
 后台「数据统计」提供概览、访问分析、搜索需求、内容热度、播放质量、订阅转化、采集运行。支持北京时间日期、适用的片源/播放类型/设备/浏览器筛选、分页及当前页 CSV；CSV 时长使用毫秒，公式前缀已转义。
 
 - 浏览器匿名标识保存在签名 HttpOnly Cookie 中，数据库只存 HMAC 后的标识。测试访客使用独立哈希域，所有验收数据标记 `is_test=1`。
-- 「访问分析」提供全国34省级区域分布、PV/设备UV/去重IP切换、IP明细与CSV。IP仅从服务器核验的EdgeOne请求头读取；根目录 `middleware.js` 使用平台 `context.geo/clientIp` 覆盖客户端同名归属头，不读取浏览器提交的IP或省份。参见[EdgeOne Middleware文档](https://pages.edgeone.ai/document/middleware)。IPv6规范化后去重，IPv4映射IPv6与IPv4统一计数。
+- 「访问分析」提供全国34省级区域分布、PV/设备UV/去重IP切换、IP明细与CSV。`edge-functions/api/analytics/collect.js` 从平台原生 `request.eo` 读取客户端IP和省份，忽略浏览器同名字段/头；将60秒有效、绑定完整请求体的HMAC证明传给本站 `/api/analytics/ingest` 云函数，校验后直接TLS写库。Next.js由OpenNext适配，不使用平台通用middleware。参见[EdgeOne Request文档](https://edgeone.ai/document/52690)。IPv6规范化后去重，IPv4映射IPv6与IPv4统一计数。本地Next dev使用回环IP及未知地区，生产不允许无签名网络信息。
 - IP/省份仅随访问事实保存90天，完整IP只在受保护管理员报表中提供。地域基于IP网络出口，代理、VPN、移动网络与定位库可能造成偏差。省份不明、归属未知及境外单列，旧记录不回填；跨省设备/IP不能将各省去重数相加当成全国去重数。地域数据遵循日期/设备/浏览器筛选，不受分页限制。
 - 访问次数以连续 30 分钟无活动划分。UV 是区间内浏览器去重数，不代表真实人数。
 - 搜索按逻辑 searchId 去重；正常无结果、部分失败、全部失败分开。点击/起播转化以范围内的搜索为基准，并核对匿名设备。显式重复搜索同一个词会产生新逻辑搜索；命中缓存时不伪造新的片源网络耗时样本。
@@ -34,6 +34,8 @@ EdgeOne 仅服务器环境变量：`ANALYTICS_DB_HOST`、`ANALYTICS_DB_PORT`、`
 初始化脚本必须先核验服务器身份；`create` 通过 aaPanel 建独立库和最小权限用户，`tls`/`activate`涉及数据库服务重启，仅首次部署需要。`schema` 只为指定库执行幂等建表。禁止重跑首次初始化去覆盖已有数据库或证书。
 
 已有库升级IP/地域功能先执行已验证恢复的备份，再运行 `migrate-geography.py`（同目录需要维护脚本及SQL）；仅增加字段，不删除旧事实。线上部署成功并验证平台归属透传后，将 `analytics_meta.geography_started_at` 从NULL设置为当前UTC，保留首次启用时间。新库schema也包含这些字段。代码回滚可保留新增字段，旧版照常运行。
+
+手工覆盖本次增量包时，须删除旧文件 `src/app/api/analytics/collect/route.ts`；公开采集URL由原生边缘函数接管。Git部署自动处理该删除。部署验收通过后执行 `migrate-geography.py --activate`，幂等记录地域启用时间。
 
 在项目根目录运行以下单行命令。配置、API密钥及备份均在仓库外/忽略文件中，不随代码和ZIP发布。
 

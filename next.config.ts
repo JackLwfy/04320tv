@@ -19,6 +19,10 @@ const nextConfig: NextConfig = {
   // 本地 next start 在 standalone 模式下不受支持，故按环境切换
   output: process.env.DOCKER_BUILD === '1' ? 'standalone' : undefined,
   reactStrictMode: true,
+  // Local Next dev does not run the native EdgeOne collector.
+  async rewrites() {
+    return process.env.NODE_ENV === 'development' ? [{ source: '/api/analytics/collect', destination: '/api/analytics/ingest' }] : [];
+  },
   // 固定非敏感配置版本，让同一提交重新部署时也生成不同的服务端产物。
   env: { APP_VERSION: readAppVersion(), ADMIN_CONFIG_REVISION: process.env.ADMIN_CONFIG_REVISION || '' },
   // 采集站/豆瓣等上游地址在运行时由用户配置，构建期无法枚举，关闭图片优化改用 <img>

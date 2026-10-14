@@ -1,4 +1,5 @@
 import { isIP } from 'node:net';
+import crypto from 'node:crypto';
 import type { AnalyticsGeography, AnalyticsGeoMetrics } from './analytics-types';
 
 // GB/T 2260 province-level codes, also used by the bundled map.
@@ -33,6 +34,25 @@ export function analyticsNetwork(headers: Headers): AnalyticsNetwork {
   let region = '';
   try { region = decodeURIComponent((headers.get('x-04320-geo-region') || '').slice(0, 300)); } catch { /* Missing location stays unknown. */ }
   return { ip, country, province: normalizeProvince(country, region, headers.get('x-04320-geo-code') || '') };
+}
+
+export function verifiedAnalyticsNetwork(headers: Headers, body: unknown, now = Date.now()): AnalyticsNetwork | null {
+  const proof = headers.get('x-04320-network') || '';
+  const mac = headers.get('x-04320-network-signature') || '';
+  const secret = process.env.ANALYTICS_INGEST_SECRET || '';
+  if (!proof && process.env.NODE_ENV === 'development') {
+    // Local Next dev has no EO edge runtime; never trust local geography headers.
+    return analyticsNetwork(new Headers({ 'eo-connecting-ip': '127.0.0.1' }));
+  }
+  if (proof.length > 2000 || !/^[a-f0-9]{64}$/.test(mac) || secret.length < 32) return null;
+  const expected = crypto.createHmac('sha256', secret).update(`edge-network\n${proof}\n${JSON.stringify(body)}`).digest('hex');
+  if (!crypto.timingSafeEqual(Buffer.from(mac), Buffer.from(expected))) return null;
+  try {
+    const data = JSON.parse(decodeURIComponent(proof));
+    if (!Number.isSafeInteger(data.at) || data.at > now + 10000 || now - data.at > 60000 || typeof data.ip !== 'string' || typeof data.country !== 'string' || typeof data.region !== 'string' || typeof data.code !== 'string') return null;
+    const network = analyticsNetwork(new Headers({ 'eo-connecting-ip': data.ip, 'x-04320-geo-country': data.country, 'x-04320-geo-region': encodeURIComponent(data.region), 'x-04320-geo-code': data.code }));
+    return network.ip ? network : null;
+  } catch { return null; }
 }
 
 export const emptyGeoMetrics = (): AnalyticsGeoMetrics => ({ views: 0, visitors: 0, ips: 0, sessions: 0 });

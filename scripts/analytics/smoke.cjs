@@ -37,6 +37,7 @@ async function main() {
   assert.deepEqual(await response.json(), { accepted: 4, duplicates: 0 });
   const duplicate = await request('/api/analytics/collect', { token: session.token, events });
   assert.deepEqual(await duplicate.json(), { accepted: 0, duplicates: 4 });
+  if (origin.startsWith('https:')) assert.equal((await request('/api/analytics/ingest', { token: session.token, events })).status, 403, 'Unsigned calls cannot bypass the native edge collector');
   assert.equal((await request('/api/analytics/collect', { token: 'invalid', events })).status, 401);
   assert.equal((await request('/api/analytics/collect', { token: session.token, events: [{ ...events[0], type: 'invalid' }] })).status, 400);
   for (const view of ['overview', 'traffic', 'search', 'content', 'quality', 'newsletter', 'health']) {
