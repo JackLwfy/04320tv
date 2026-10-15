@@ -8,9 +8,11 @@ import { Icon, type IconName } from '@/components/icon';
 import { changes, describeValue, initialSettings, labels, validateSettings, type Section, type Settings, type SourceKind } from '@/lib/admin-settings';
 import s from './studio.module.css';
 import { NewsletterDialog, type NewsletterState } from '@/components/newsletter-dialog';
+import { HeroEditor } from '@/components/hero-editor';
 
 const sections: { id: Section; label: string; icon: IconName; eyebrow: string; description: string }[] = [
   { id: 'site', label: '网站信息', icon: 'gear', eyebrow: 'THE IDENTITY', description: '让每一次相遇，都从一个好印象开始。' },
+  { id: 'hero', label: '首页光影', icon: 'clock', eyebrow: 'SIX MOMENTS, ONE STORY', description: '让一天的光线，陪观众走进不同的故事。' },
   { id: 'features', label: '功能设置', icon: 'filter', eyebrow: 'THE EXPERIENCE', description: '决定观众能看到什么，保留恰到好处的体验。' },
   { id: 'sources', label: '数据源', icon: 'link', eyebrow: 'THE COLLECTION', description: '整理内容的入口，让故事有迹可循。' },
   { id: 'playback', label: '播放偏好', icon: 'bolt', eyebrow: 'THE DETAILS', description: '从封面到片尾，照顾每一个观影细节。' },
@@ -219,8 +221,9 @@ export default function AdminPage() {
         <div className={s.pageHeading}><span className={s.eyebrow}>{active.eyebrow} <span>/ 0{sections.findIndex((item) => item.id === section) + 1}</span></span><h1 tabIndex={-1} ref={titleRef}>{active.label}</h1><p>{active.description}</p></div>
         {section === 'analytics' ? <AdminAnalytics /> : <>
         {notice && <div className={s.notice} role="status"><Icon name="alert" />{notice}</div>}<div className={s.cloudTools}><span>04320.com · EdgeOne</span><button className={s.secondary} disabled={running} onClick={() => setConfirm('reload')}>重新读取配置</button></div>
-        <div className={s.contentGrid}>
+        <div className={`${s.contentGrid} ${section === 'hero' ? s.heroGrid : ''}`}>
           <section className={s.editor} aria-label={active.label}>
+            {section === 'hero' && <HeroEditor value={draft.hero} onChange={hero => update('hero', hero)} disabled={running} description={draft.description} announcement={draft.announcement} />}
             {section === 'newsletter' && <>
               {toggle('newsletterEnabled', '首页访问验证通过后延迟弹出；当天关闭或订阅成功后不再自动弹出。页脚保留手动入口。', true)}
               <fieldset className={s.newsletterChoices}><legend>弹窗样式</legend>{([['lighthouse', '灯塔来信', '海岸画面与表单并列，延续首页的电影感。'], ['ticket', '电影票根', '用一张票根，邀请观众加入光影来信。'], ['minimal', '极简片尾', '收起图片，用文字和留白聚焦订阅。']] as const).map(([value, title, description]) => <label key={value} className={draft.newsletterStyle === value ? s.newsletterSelected : ''}><input type="radio" name="newsletter-style" checked={draft.newsletterStyle === value} onChange={() => update('newsletterStyle', value)} /><Image src={`/images/newsletter-${value}.png`} alt={`${title}设计参考`} width={480} height={320} /><strong>{title}</strong><span>{description}</span></label>)}</fieldset>

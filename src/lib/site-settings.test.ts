@@ -8,6 +8,15 @@ beforeEach(() => { vi.resetModules(); });
 afterEach(() => { vi.unstubAllEnvs(); vi.unstubAllGlobals(); });
 
 describe('published site settings', () => {
+  it('reads explicitly published mobile and desktop hero configuration', async () => {
+    vi.stubEnv('NEXT_PUBLIC_HERO_MODE', 'fixed');
+    vi.stubEnv('NEXT_PUBLIC_HERO_FIXED', 'dawn');
+    const { defaultHeroConfig } = await import('./home-hero');
+    vi.stubEnv('NEXT_PUBLIC_HERO_DAWN', JSON.stringify({ ...defaultHeroConfig.slots[0], mobilePosition: '80% 30%' }));
+    const { siteSettings } = await import('./site-settings');
+    expect(siteSettings.hero.mode).toBe('fixed');
+    expect(siteSettings.hero.slots[0]).toMatchObject({ mobilePosition: '80% 30%', mobileImage: '/images/hero/dawn.webp' });
+  });
   it('uses configured identity and allows an empty announcement', async () => {
     vi.stubEnv('NEXT_PUBLIC_SITE_NAME', '我的影院');
     vi.stubEnv('NEXT_PUBLIC_SITE_SUBTITLE', '每日好片');

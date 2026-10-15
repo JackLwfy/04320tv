@@ -1,5 +1,17 @@
+import { heroFromEnv } from './home-hero';
+
 // NEXT_PUBLIC 值在构建时内联；后台发布配置后需要重新部署才能更新前台。
 export const siteSettings = {
+  hero: heroFromEnv({
+    NEXT_PUBLIC_HERO_MODE: process.env.NEXT_PUBLIC_HERO_MODE,
+    NEXT_PUBLIC_HERO_FIXED: process.env.NEXT_PUBLIC_HERO_FIXED,
+    NEXT_PUBLIC_HERO_DAWN: process.env.NEXT_PUBLIC_HERO_DAWN,
+    NEXT_PUBLIC_HERO_DAY: process.env.NEXT_PUBLIC_HERO_DAY,
+    NEXT_PUBLIC_HERO_AFTERNOON: process.env.NEXT_PUBLIC_HERO_AFTERNOON,
+    NEXT_PUBLIC_HERO_SUNSET: process.env.NEXT_PUBLIC_HERO_SUNSET,
+    NEXT_PUBLIC_HERO_EVENING: process.env.NEXT_PUBLIC_HERO_EVENING,
+    NEXT_PUBLIC_HERO_MIDNIGHT: process.env.NEXT_PUBLIC_HERO_MIDNIGHT,
+  }),
   newsletterEnabled: process.env.NEXT_PUBLIC_NEWSLETTER_ENABLED === 'true',
   newsletterStyle: process.env.NEXT_PUBLIC_NEWSLETTER_STYLE === 'ticket' ? 'ticket' as const : process.env.NEXT_PUBLIC_NEWSLETTER_STYLE === 'minimal' ? 'minimal' as const : 'lighthouse' as const,
   name: process.env.NEXT_PUBLIC_SITE_NAME?.trim() || '04320TV',

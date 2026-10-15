@@ -1,5 +1,6 @@
 import crypto from 'node:crypto';
 import { initialSettings, parseSettings, type Settings, type SourceKind } from './admin-settings';
+import { heroEnvKeys, heroFromEnv, heroToEnv } from './home-hero';
 
 export const settingKeys = {
   newsletterEnabled: 'NEXT_PUBLIC_NEWSLETTER_ENABLED', newsletterStyle: 'NEXT_PUBLIC_NEWSLETTER_STYLE',
@@ -8,7 +9,7 @@ export const settingKeys = {
   recommendSource: 'DEFAULT_RECOMMEND_SOURCE', imageMode: 'DEFAULT_IMAGE_MODE', autoplay: 'NEXT_PUBLIC_DEFAULT_AUTOPLAY', adFilter: 'NEXT_PUBLIC_DEFAULT_AD_FILTER', adultFilter: 'NEXT_PUBLIC_DEFAULT_ADULT_FILTER',
 } as const;
 export const sourceKeys = { vod: 'DEFAULT_SOURCES', live: 'DEFAULT_LIVE_SOURCES', subscription: 'DEFAULT_SUBSCRIPTIONS' } as const;
-export const managedKeys = [...Object.values(settingKeys), ...Object.values(sourceKeys), 'ADMIN_CONFIG_REVISION', 'PASSWORD'];
+export const managedKeys = [...Object.values(settingKeys), ...Object.values(sourceKeys), ...heroEnvKeys, 'ADMIN_CONFIG_REVISION', 'PASSWORD'];
 export type Env = Record<string, string>;
 export function accessPasswordUpdate(value: unknown): Env {
   if (value === undefined) return {};
@@ -24,6 +25,7 @@ function rawSources(env: Env, kind: SourceKind): Record<string, unknown>[] {
 }
 export function settingsFromEnv(env: Env): Settings {
   const settings = structuredClone(initialSettings);
+  settings.hero = heroFromEnv(env);
   for (const [key, envKey] of Object.entries(settingKeys)) {
     if (env[envKey] !== undefined) Object.assign(settings, { [key]: typeof initialSettings[key as keyof Settings] === 'boolean' ? env[envKey] !== 'false' : env[envKey] });
   }
@@ -36,7 +38,7 @@ export function configRevision(env: Env) {
 }
 export function settingsToEnv(value: unknown, previous: Env): Env {
   const settings = parseSettings(value);
-  const values: Env = {};
+  const values: Env = heroToEnv(settings.hero);
   for (const [key, envKey] of Object.entries(settingKeys)) values[envKey] = String(settings[key as keyof typeof settingKeys]);
   for (const kind of Object.keys(sourceKeys) as SourceKind[]) {
     const originals = rawSources(previous, kind);

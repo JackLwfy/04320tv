@@ -50,7 +50,13 @@
 .cinema-tool-icon { display: none; }
 .cinema-tools > button:first-child { min-height: 44px; min-width: 44px; display: grid; place-items: center; }
 .cinema-hero { position: relative; isolation: isolate; border-bottom: 1px solid rgb(var(--c-line)); background: #101411; color: #f5f4e9; }
-.cinema-hero-art { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: center; z-index: -1; }
+.cinema-hero-picture { position: absolute; inset: 0; z-index: -1; pointer-events: none; animation: cinema-hero-appear .6s ease-out; }
+.cinema-hero-picture::after { content: ''; position: absolute; inset: 0; background: rgb(0 0 0 / var(--hero-shade, 0)); }
+.cinema-hero-art { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: var(--hero-position, center); }
+.cinema-hero-copy { animation: cinema-hero-appear .6s ease-out; }
+.cinema-hero-copy h1 { white-space: pre-line; overflow-wrap: anywhere; }
+.cinema-hero-caption { margin: -12px 0 24px; font-size: 14px; color: #d3d8c9; }
+@keyframes cinema-hero-appear { from { opacity: .35; } to { opacity: 1; } }
 .cinema-hero-inner { padding-top: 46px; padding-bottom: 46px; }
 .cinema-eyebrow { font-size: 11px; letter-spacing: .32em; color: #b3bbad; margin-bottom: 20px; }
 .cinema-hero-copy h1 { font-family: 'Cinema Serif', 'Songti SC', 'Noto Serif SC', 'SimSun', serif; font-size: clamp(56px, 5.9vw, 88px); font-weight: 600; line-height: 1.12; letter-spacing: -.04em; }
@@ -112,9 +118,9 @@
   .cinema-tool-label { display: none; }
   .cinema-nav-link { font-size: 15px; min-height: 40px; }
   .cinema-hero-inner { padding-block: 42px; }
-  .cinema-hero-art { object-position: right center; opacity: .48; }
+  .cinema-hero-art { object-position: var(--hero-mobile-position, right center); opacity: .48; }
   .cinema-hero-aside { display: none; }
-  .cinema-hero-copy h1 { font-size: clamp(44px, 8vw, 60px); }
+  .cinema-hero-copy h1 { font-size: clamp(32px, 9.5vw, 60px); }
   .cinema-hero-description { font-size: 15px; margin-block: 22px 28px; }
   .cinema-eyebrow { font-size: 10px; }
   .cinema-search { max-width: 100%; }
@@ -139,4 +145,4 @@
   .cinema-recommend-actions { gap: 12px; }
   .cinema-recommend-actions button { font-size: 12px; }
 }
-@media (prefers-reduced-motion: reduce) { .cinema-poster img { transition: none; } .cinema-poster:hover img { transform: none; } }
+@media (prefers-reduced-motion: reduce) { .cinema-hero-picture, .cinema-hero-copy { animation: none; } .cinema-poster img { transition: none; } .cinema-poster:hover img { transform: none; } }

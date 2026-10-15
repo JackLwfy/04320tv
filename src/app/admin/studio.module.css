@@ -80,6 +80,8 @@
 .pageHeading h1:focus { outline: none; }
 .pageHeading p { margin-top: 17px; color: var(--muted); font-size: 13px; }
 .contentGrid { display: grid; grid-template-columns: minmax(0, 1fr) 270px; gap: 40px; align-items: start; }
+.heroGrid { grid-template-columns: minmax(0, 1fr); }
+.heroGrid > aside { display: none; }
 .editor { min-width: 0; }
 .cloudTools { display: flex; align-items: center; justify-content: space-between; gap: 12px; max-width: calc(100% - 310px); margin: -10px 0 26px; color: var(--muted); font-size: 11px; }
 .cloudTools .secondary { min-height: 38px; padding: 7px 12px; font-size: 12px; }

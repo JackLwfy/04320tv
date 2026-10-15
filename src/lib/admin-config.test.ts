@@ -1,8 +1,17 @@
 import { describe, expect, it } from 'vitest';
 import { configRevision, managedKeys, settingsFromEnv, settingsToEnv } from './admin-config';
 import { initialSettings } from './admin-settings';
+import { defaultHeroConfig } from './home-hero';
 
 describe('administrator configuration environment mapping', () => {
+  it('publishes all six hero slots and includes their content in revision checks', () => {
+    const env = settingsToEnv(initialSettings, {});
+    expect(settingsFromEnv(env).hero).toEqual(defaultHeroConfig);
+    const draft = structuredClone(initialSettings);
+    draft.hero.slots[0].caption = '新的清晨。';
+    expect(configRevision(settingsToEnv(draft, env))).not.toBe(configRevision(env));
+    expect(() => settingsToEnv({ ...initialSettings, hero: null }, {})).toThrow();
+  });
   it('round trips all newsletter themes and defaults the new entry to disabled', () => {
     expect(settingsFromEnv({})).toMatchObject({ newsletterEnabled: false, newsletterStyle: 'lighthouse' });
     for (const newsletterStyle of ['lighthouse', 'ticket', 'minimal'] as const) {

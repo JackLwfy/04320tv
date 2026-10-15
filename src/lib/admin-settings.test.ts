@@ -4,6 +4,13 @@ import { changes, describeValue, initialSettings, parseSettings, validateSetting
 const source = { id: 'test-source', kind: 'vod' as const, name: '测试源', url: 'https://video.example/api', enabled: true };
 
 describe('admin configuration', () => {
+  it('accepts older drafts without hero and describes hero changes for confirmation', () => {
+    const { hero, ...legacy } = initialSettings;
+    expect(parseSettings(legacy).hero).toEqual(hero);
+    expect(describeValue(hero)).toContain('北京时间自动切换');
+    expect(describeValue(hero)).toContain('手机：/images/hero/dawn.webp（100% 50%）');
+    expect(validateSettings({ ...initialSettings, hero: { ...hero, slots: [] } })?.section).toBe('hero');
+  });
   it('tracks reversible changes without altering the published snapshot', () => {
     const draft = structuredClone(initialSettings);
     draft.live = false;
