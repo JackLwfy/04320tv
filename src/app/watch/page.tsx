@@ -320,7 +320,7 @@ function WatchContent() {
                 <EmptyState variant="plain" title={detailQuery.isError ? '获取剧集失败' : '暂无剧集信息'} />
               )
             ) : (
-              <div className="grid grid-cols-5 lg:grid-cols-4 gap-1.5 max-h-[65vh] overflow-y-auto scrollbar-thin pr-1">
+              <div className="grid grid-cols-[repeat(auto-fill,minmax(6rem,1fr))] gap-1.5 max-h-[65vh] overflow-y-auto scrollbar-thin pr-1">
                 {orderedEpisodes.map((realIndex) => (
                   <EpisodeButton
                     key={realIndex}
@@ -365,7 +365,7 @@ function EpisodeButton({ index, active, onClick }: { index: number; active: bool
       className={cn('btn btn-sm !px-1', active ? 'episode-active' : 'btn-ghost')}
       onClick={onClick}
     >
-      {index + 1}
+      第 {index + 1} 集
     </button>
   );
 }

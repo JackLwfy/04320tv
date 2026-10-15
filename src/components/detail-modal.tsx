@@ -228,7 +228,7 @@ export function DetailModal({ item, onClose }: { item: SearchResultItem | null; 
                           className="btn-ghost btn-sm !px-1 text-center"
                           onClick={() => play(realIndex)}
                         >
-                          {realIndex + 1}
+                          第 {realIndex + 1} 集
                         </button>
                       );
                     })}
