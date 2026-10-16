@@ -24,6 +24,8 @@ import { siteSettings } from '@/lib/site-settings';
 import type { HeroSlot } from '@/lib/home-hero';
 import { HeroBackdrop } from '@/components/hero-backdrop';
 import { useHomeHero } from '@/components/use-home-hero';
+import { useHomeWeather } from '@/components/use-home-weather';
+import { HomeWeatherControl } from '@/components/home-weather';
 
 /**
  * 首页：搜索（URL ?s= 驱动，可后退/分享）+ 豆瓣推荐。
@@ -32,18 +34,20 @@ import { useHomeHero } from '@/components/use-home-hero';
 /** 搜索结果分批渲染的批大小：一次挂载上千张卡片会明显掉帧 */
 const RESULT_PAGE_SIZE = 60;
 
-export default function HomePage({ initialHero, initialTime }: { initialHero: HeroSlot; initialTime: number }) {
+export default function HomePage({ initialHero, initialTime, weatherEnabled = false }: { initialHero: HeroSlot; initialTime: number; weatherEnabled?: boolean }) {
   return (
     <Suspense>
-      <HomeContent initialHero={initialHero} initialTime={initialTime} />
+      <HomeContent initialHero={initialHero} initialTime={initialTime} weatherEnabled={weatherEnabled} />
     </Suspense>
   );
 }
 
-function HomeContent({ initialHero, initialTime }: { initialHero: HeroSlot; initialTime: number }) {
-  const hero = useHomeHero(siteSettings.hero, initialHero, initialTime);
+function HomeContent({ initialHero, initialTime, weatherEnabled }: { initialHero: HeroSlot; initialTime: number; weatherEnabled: boolean }) {
   const { checked, verified } = useAuth();
   const searchParams = useSearchParams();
+  const weather = useHomeWeather(weatherEnabled, checked && verified && !searchParams.get('s'));
+  const loadedHero = useHomeHero(siteSettings.hero, initialHero, initialTime, weather.kind, weather.pending);
+  const hero = loadedHero || initialHero;
   const router = useRouter();
   const { toast } = useToast();
   const urlQuery = searchParams.get('s') || '';
@@ -213,9 +217,10 @@ function HomeContent({ initialHero, initialTime }: { initialHero: HeroSlot; init
 
       <main className="flex-1">
         {/* 搜索区 */}
-        <section className={cn('cinema-search-section', urlQuery ? 'cinema-search-compact' : 'cinema-hero')}>
-          {!urlQuery && <HeroBackdrop key={hero.id} slot={hero} />}
+        <section className={cn('cinema-search-section', urlQuery ? 'cinema-search-compact' : 'cinema-hero', /^(rain|snow)-/.test(hero.id) && 'cinema-hero-weather')}>
+          {!urlQuery && loadedHero && <HeroBackdrop key={hero.id} slot={hero} />}
           <div className="cinema-container cinema-hero-inner">
+          {!urlQuery && weatherEnabled && <HomeWeatherControl state={weather} />}
           {!urlQuery && (
             <header className="cinema-hero-copy" key={hero.id}>
               <p className="cinema-eyebrow">A MOMENT FOR CINEMA</p>

@@ -4,6 +4,21 @@ import { changes, describeValue, initialSettings, parseSettings, validateSetting
 const source = { id: 'test-source', kind: 'vod' as const, name: '测试源', url: 'https://video.example/api', enabled: true };
 
 describe('admin configuration', () => {
+  it('describes weather mode, fixed weather themes, and weather edits in the publish review', () => {
+    const hero = structuredClone(initialSettings.hero);
+    hero.mode = 'weather';
+    expect(describeValue(hero)).toContain('北京时间与当地天气自动切换');
+    expect(describeValue(hero)).toContain('雨日 · 天气 · 白昼');
+    expect(describeValue(hero)).toContain('雪夜 · 天气 · 入夜');
+    hero.weather[0].caption = '审核天气文案';
+    hero.weather[0].mobilePosition = '40% 60%';
+    expect(describeValue(hero)).toContain('审核天气文案');
+    expect(describeValue(hero)).toContain('手机：/images/hero/weather/rain-day-mobile.webp（40% 60%）');
+    expect(changes(initialSettings, { ...initialSettings, hero })).toEqual(['hero']);
+    hero.mode = 'fixed';
+    hero.fixed = 'snow-night';
+    expect(describeValue(hero).split('\n')[0]).toBe('固定：雪夜');
+  });
   it('accepts older drafts without hero and describes hero changes for confirmation', () => {
     const { hero, ...legacy } = initialSettings;
     expect(parseSettings(legacy).hero).toEqual(hero);

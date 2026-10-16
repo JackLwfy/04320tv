@@ -32,7 +32,11 @@ export function changes(before: Settings, after: Settings) {
 export function describeValue(value: Settings[keyof Settings]): string {
   if (typeof value === 'boolean') return value ? '开启' : '关闭';
   if (Array.isArray(value)) return value.map((source) => `${source.name} · ${source.enabled ? '开启' : '关闭'} · ${source.url}`).join('\n') || '无数据源';
-  if (value && typeof value === 'object') return `${value.mode === 'auto' ? '北京时间自动切换' : `固定：${value.slots.find(s => s.id === value.fixed)?.name || value.fixed}`}\n${value.slots.map(s => `${s.name} · ${String(Math.floor(s.start / 60)).padStart(2, '0')}:${String(s.start % 60).padStart(2, '0')} · ${s.title.replace('\n', ' ')} · ${s.caption}\n桌面：${s.image}（${s.position}）\n手机：${s.mobileImage}（${s.mobilePosition}）· 遮罩 ${s.shade}%`).join('\n')}`;
+  if (value && typeof value === 'object') {
+    const scenes = [...value.slots, ...value.weather];
+    const mode = value.mode === 'auto' ? '北京时间自动切换' : value.mode === 'weather' ? '北京时间与当地天气自动切换' : `固定：${scenes.find(s => s.id === value.fixed)?.name || value.fixed}`;
+    return `${mode}\n${scenes.map(s => `${s.name} · ${value.weather.includes(s) ? (s.id.endsWith('day') ? '天气 · 白昼' : '天气 · 入夜') : `${String(Math.floor(s.start / 60)).padStart(2, '0')}:${String(s.start % 60).padStart(2, '0')}`} · ${s.title.replace('\n', ' ')} · ${s.caption}\n桌面：${s.image}（${s.position}）\n手机：${s.mobileImage}（${s.mobilePosition}）· 遮罩 ${s.shade}%`).join('\n')}`;
+  }
   if (value === 'lighthouse' || value === 'ticket' || value === 'minimal') return { lighthouse: '灯塔来信', ticket: '电影票根', minimal: '极简片尾' }[value];
   return ({ 'hot-list': '影视热榜', douban: '豆瓣热门', bangumi: '新番放送', direct: '直连优先', proxy: '内置代理优先', a: 'A · 影院经典', b: 'B · 醒目标识', c: 'C · 灯塔光影' } as Record<string, string>)[value] || value || '未设置';
 }

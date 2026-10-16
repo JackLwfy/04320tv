@@ -43,6 +43,20 @@ describe('home hero scheduled image loading', () => {
     vi.advanceTimersByTime(70000);
     expect(images).toHaveLength(0); expect(hooks.update).not.toHaveBeenCalled();
   });
+  it('keeps the elapsed clock when weather changes after a time boundary', () => {
+    const config = { ...defaultHeroConfig, mode: 'weather' as const };
+    mount(config); vi.advanceTimersByTime(20000); cleanup!();
+    runHeroHook(config, heroAt(config, initialTime), initialTime, 'rain'); cleanup = hooks.effect!();
+    expect(images.at(-1)?.src).toBe('/images/hero/weather/rain-night-mobile.webp');
+  });
+  it('chooses the first resolved weather image without preloading a default scene', () => {
+    const config = { ...defaultHeroConfig, mode: 'weather' as const };
+    expect(runHeroHook(config, heroAt(config, initialTime), initialTime, 'none', true)).toBeNull(); cleanup = hooks.effect!();
+    expect(images).toHaveLength(0); cleanup!();
+    runHeroHook(config, heroAt(config, initialTime), initialTime, 'snow', false); cleanup = hooks.effect!();
+    expect(images).toHaveLength(0);
+    expect(hooks.update).toHaveBeenCalledWith(expect.objectContaining({ id: 'snow-day' }));
+  });
   it('retries the actual old scene after navigation provides a newer server theme', () => {
     mount(); vi.advanceTimersByTime(10021);
     cleanup!();

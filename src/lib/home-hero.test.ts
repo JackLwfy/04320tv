@@ -1,7 +1,37 @@
 import { describe, expect, it } from 'vitest';
-import { defaultHeroConfig, heroAt, heroEnvKeys, heroFromEnv, heroToEnv, parseHeroConfig } from './home-hero';
+import { defaultHeroConfig, heroAt, heroForWeather, heroEnvKeys, heroFromEnv, heroToEnv, parseHeroConfig } from './home-hero';
 
 describe('home hero schedule', () => {
+  it('extends old configurations with four independent mobile weather scenes', () => {
+    const legacy = { mode: defaultHeroConfig.mode, fixed: defaultHeroConfig.fixed, slots: defaultHeroConfig.slots };
+    expect(parseHeroConfig(legacy)).toEqual(defaultHeroConfig);
+    for (const slot of defaultHeroConfig.weather) {
+      expect(slot.mobileImage).toBe(`/images/hero/weather/${slot.id}-mobile.webp`);
+      expect(slot.mobilePosition).toBe('50% 50%');
+    }
+    expect(() => parseHeroConfig({ ...defaultHeroConfig, weather: defaultHeroConfig.weather.slice(1) })).toThrow();
+    expect(() => parseHeroConfig({ ...defaultHeroConfig, weather: Array(4).fill(defaultHeroConfig.weather[0]) })).toThrow();
+  });
+  it('uses configured daylight periods for weather and preserves fixed scenes', () => {
+    const config = { ...structuredClone(defaultHeroConfig), mode: 'weather' as const };
+    for (const [time, period] of [['04:59', 'night'], ['05:00', 'day'], ['09:00', 'day'], ['12:00', 'day'], ['17:00', 'night'], ['19:00', 'night'], ['23:00', 'night']]) {
+      const date = new Date(`2026-10-15T${time}:00+08:00`);
+      for (const kind of ['rain', 'snow'] as const) expect(heroForWeather(config, date, kind).id).toBe(`${kind}-${period}`);
+      expect(heroForWeather(config, date, 'none')).toEqual(heroAt(config, date));
+      expect(heroForWeather(defaultHeroConfig, date, 'rain')).toEqual(heroAt(defaultHeroConfig, date));
+      expect(heroForWeather({ ...config, mode: 'fixed', fixed: 'snow-day' }, date, 'rain').id).toBe('snow-day');
+    }
+    config.slots.find(slot => slot.id === 'sunset')!.start = 1000;
+    expect(heroForWeather(config, new Date('2026-10-15T16:40:00+08:00'), 'rain').id).toBe('rain-night');
+  });
+  it('publishes weather with underscore environment keys and enforces weather byte limits', () => {
+    const config = structuredClone(defaultHeroConfig);
+    const env = heroToEnv(config);
+    expect(env.NEXT_PUBLIC_HERO_RAIN_DAY).toBe(JSON.stringify(config.weather[0]));
+    config.weather[0].image = `https://example.com/${'a'.repeat(475)}`;
+    config.weather[0].mobileImage = config.weather[0].image;
+    expect(() => heroToEnv(config)).toThrow('1000 字节');
+  });
   it('keeps the existing mobile right-aligned landscape composition by default', () => {
     for (const slot of defaultHeroConfig.slots) {
       expect(slot.mobileImage).toBe(slot.image);

@@ -15,6 +15,13 @@
 .editor :is(button,input,textarea,select):focus-visible { outline: 2px solid var(--accent, #e1ea9b); outline-offset: 3px; }
 .editor input[type=range] { accent-color: var(--accent, #e1ea9b); height: 24px; width: 100%; min-width: 0; }
 .scenes { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 12px; margin-bottom: 30px; }
+.weatherScenes { grid-template-columns: repeat(4, minmax(0, 1fr)); margin-top: -14px; }
+.weatherStatus { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 16px 20px; margin-bottom: 24px; border: 1px solid #364037; border-radius: 5px; background: #141c18; }
+.weatherStatus strong { font-size: 12px; font-weight: 500; }
+.weatherStatus p { margin: 7px 0; color: #d4deb5; font-size: 12px; }
+.weatherStatus small { color: var(--muted, #aeb9ab); font-size: 10px; line-height: 1.7; }
+.weatherStatus button { flex-shrink: 0; }
+.simulation { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 16px; font-size: 12px; }
 .scene { position: relative; overflow: hidden; text-align: left; border: 1px solid #364037; border-radius: 5px; padding: 0; background: #171d19; transition: border-color .15s, transform .15s; }
 .scene:hover { border-color: #9daa82; transform: translateY(-2px); }
 .scene.active { border-color: var(--accent, #e1ea9b); box-shadow: 0 0 0 1px var(--accent, #e1ea9b); }
@@ -60,6 +67,9 @@
 .mobile .search { width: 100%; margin-top: 8cqw; font-size: 3.3cqw; }
 .mobile .search > span { padding-left: 3cqw; }
 .mobile .search b { padding: 3cqw 5cqw; }
+.weatherMobile { aspect-ratio: 3 / 4; }
+.weatherMobile .previewImage { opacity: 1; }
+.weatherMobile .previewCopy { min-height: 100%; background: linear-gradient(90deg, #0710199c, #07101915 85%), linear-gradient(0deg, #07101966, transparent 45%); }
 .timeline { margin-top: 24px; }
 .timeline > label { display: flex; justify-content: space-between; align-items: center; font-size: 12px; margin-bottom: 7px; }
 .timeline output { font-size: 21px; letter-spacing: -.04em; color: var(--accent, #e1ea9b); font-variant-numeric: tabular-nums; }

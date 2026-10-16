@@ -12,7 +12,7 @@ import { HeroEditor } from '@/components/hero-editor';
 
 const sections: { id: Section; label: string; icon: IconName; eyebrow: string; description: string }[] = [
   { id: 'site', label: '网站信息', icon: 'gear', eyebrow: 'THE IDENTITY', description: '让每一次相遇，都从一个好印象开始。' },
-  { id: 'hero', label: '首页光影', icon: 'clock', eyebrow: 'SIX MOMENTS, ONE STORY', description: '让一天的光线，陪观众走进不同的故事。' },
+  { id: 'hero', label: '首页光影', icon: 'clock', eyebrow: 'TEN SCENES, EVERY MOMENT', description: '让时间与天气，陪观众走进不同的故事。' },
   { id: 'features', label: '功能设置', icon: 'filter', eyebrow: 'THE EXPERIENCE', description: '决定观众能看到什么，保留恰到好处的体验。' },
   { id: 'sources', label: '数据源', icon: 'link', eyebrow: 'THE COLLECTION', description: '整理内容的入口，让故事有迹可循。' },
   { id: 'playback', label: '播放偏好', icon: 'bolt', eyebrow: 'THE DETAILS', description: '从封面到片尾，照顾每一个观影细节。' },

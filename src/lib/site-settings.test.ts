@@ -8,6 +8,14 @@ beforeEach(() => { vi.resetModules(); });
 afterEach(() => { vi.unstubAllEnvs(); vi.unstubAllGlobals(); });
 
 describe('published site settings', () => {
+  it('reads all four published weather scenes', async () => {
+    const { defaultHeroConfig } = await import('./home-hero');
+    vi.stubEnv('NEXT_PUBLIC_HERO_MODE', 'weather');
+    for (const slot of defaultHeroConfig.weather) vi.stubEnv(`NEXT_PUBLIC_HERO_${slot.id.toUpperCase().replaceAll('-', '_')}`, JSON.stringify({ ...slot, caption: `自定义${slot.name}` }));
+    const { siteSettings } = await import('./site-settings');
+    expect(siteSettings.hero.mode).toBe('weather');
+    expect(siteSettings.hero.weather.map(slot => slot.caption)).toEqual(defaultHeroConfig.weather.map(slot => `自定义${slot.name}`));
+  });
   it('reads explicitly published mobile and desktop hero configuration', async () => {
     vi.stubEnv('NEXT_PUBLIC_HERO_MODE', 'fixed');
     vi.stubEnv('NEXT_PUBLIC_HERO_FIXED', 'dawn');
