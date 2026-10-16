@@ -56,13 +56,13 @@
 .cinema-hero-copy { animation: cinema-hero-appear .6s ease-out; }
 .cinema-hero-copy h1 { white-space: pre-line; overflow-wrap: anywhere; }
 .cinema-hero-caption { margin: -12px 0 24px; font-size: 14px; color: #d3d8c9; }
-.cinema-weather { position: relative; z-index: 12; width: fit-content; max-width: 100%; margin-bottom: 22px; font-size: 12px; }
+.cinema-weather { position: relative; z-index: 12; width: fit-content; max-width: 100%; font-size: 11px; color: rgb(var(--c-faint)); }
 .cinema-weather-row { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 16px; }
-.cinema-weather-attribution { font-size: 10px; color: #b6c39e; white-space: nowrap; }
-.cinema-weather-trigger { display: flex; gap: 9px; align-items: center; text-align: left; color: #e4e8df; }
-.cinema-weather-dot { width: 5px; height: 5px; border-radius: 50%; background: #dce89e; flex-shrink: 0; box-shadow: 0 0 12px #dce89e66; }
-.cinema-weather-action { color: #b6c39e; padding-left: 8px; white-space: nowrap; }
-.cinema-weather-panel { position: absolute; top: calc(100% + 14px); left: 0; width: min(390px, calc(100vw - 40px)); padding: 23px; background: #17201e; border: 1px solid #53605a; border-radius: 16px; box-shadow: 0 20px 70px #0008; color: #eef1e9; }
+.cinema-weather-attribution { font-size: 10px; white-space: nowrap; }
+.cinema-weather-trigger { display: flex; gap: 9px; align-items: center; text-align: left; }
+.cinema-weather-dot { width: 4px; height: 4px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
+.cinema-weather-action { padding-left: 8px; white-space: nowrap; }
+.cinema-weather-panel { position: absolute; bottom: calc(100% + 14px); left: 0; width: min(390px, calc(100vw - 40px)); max-height: calc(100dvh - 40px); overflow-y: auto; padding: 23px; background: #17201e; border: 1px solid #53605a; border-radius: 16px; box-shadow: 0 20px 70px #0008; color: #eef1e9; }
 .cinema-weather-heading { display: flex; justify-content: space-between; align-items: start; gap: 16px; }
 .cinema-weather-heading small { font-size: 9px; letter-spacing: .17em; color: #c7d69d; }
 .cinema-weather-heading h2 { font-family: 'Cinema Serif', serif; font-size: 23px; margin: 6px 0 12px; }
@@ -78,6 +78,7 @@
 .cinema-weather-options { display: flex; flex-wrap: wrap; gap: 20px; padding: 16px 0; color: #dbe5ac; }
 .cinema-weather-panel .cinema-weather-credit { margin-bottom: 0; font-size: 11px; }
 .cinema-weather-credit a { text-decoration: underline; text-underline-offset: 3px; }
+.cinema-weather .cinema-weather-panel a:hover { color: #e1ea9b; }
 .cinema-weather button:focus-visible, .cinema-weather input:focus-visible { outline: 2px solid #e1ea9b; outline-offset: 4px; }
 @media (max-width: 767px) {
   .cinema-hero-weather { min-height: max(560px, 133vw); }
@@ -130,6 +131,7 @@
 .cinema-footer { border-top: 1px solid rgb(var(--c-line)); padding-block: 24px; }
 .cinema-footer-inner { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px 24px; color: rgb(var(--c-faint)); font-size: 12px; line-height: 1.8; }
 .cinema-footer-links { display: flex; margin-left: auto; }
+.cinema-footer-extra { margin-top: 10px; }
 .cinema-footer a:hover { color: rgb(var(--c-accent)); }
 .cinema-nav-link:focus-visible, .cinema-tool:focus-visible, .cinema-poster:focus-visible, .cinema-filter:focus-visible, .cinema-recommend-actions button:focus-visible { outline: 2px solid rgb(var(--c-accent)); outline-offset: 5px; }
 @media (min-width: 1600px) { .cinema-hero-inner { padding-block: 64px; } }

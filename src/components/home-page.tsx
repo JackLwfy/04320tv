@@ -220,7 +220,6 @@ function HomeContent({ initialHero, initialTime, weatherEnabled }: { initialHero
         <section className={cn('cinema-search-section', urlQuery ? 'cinema-search-compact' : 'cinema-hero', /^(rain|snow)-/.test(hero.id) && 'cinema-hero-weather')}>
           {!urlQuery && loadedHero && <HeroBackdrop key={hero.id} slot={hero} />}
           <div className="cinema-container cinema-hero-inner">
-          {!urlQuery && weatherEnabled && <HomeWeatherControl state={weather} />}
           {!urlQuery && (
             <header className="cinema-hero-copy" key={hero.id}>
               <p className="cinema-eyebrow">A MOMENT FOR CINEMA</p>
@@ -422,7 +421,7 @@ function HomeContent({ initialHero, initialTime, weatherEnabled }: { initialHero
         </div>
       </main>
 
-      <SiteFooter />
+      <SiteFooter>{!urlQuery && weatherEnabled && <HomeWeatherControl state={weather} />}</SiteFooter>
 
       <DetailModal item={detailItem} onClose={() => setDetailItem(null)} />
       <HistoryPanel open={historyOpen} onClose={() => setHistoryOpen(false)} />

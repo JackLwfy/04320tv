@@ -1,8 +1,9 @@
 import Link from 'next/link';
+import type { ReactNode } from 'react';
 import { siteSettings } from '@/lib/site-settings';
 import { NewsletterEntry } from './newsletter-entry';
 
-export function SiteFooter() {
+export function SiteFooter({ children }: { children?: ReactNode } = {}) {
   return (
     <footer className="cinema-footer">
       <div className="cinema-container cinema-footer-inner">
@@ -12,6 +13,7 @@ export function SiteFooter() {
           <NewsletterEntry />
         </p>
       </div>
+      {children && <div className="cinema-container cinema-footer-extra">{children}</div>}
     </footer>
   );
 }
