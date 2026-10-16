@@ -9,14 +9,16 @@ import type { RowDataPacket } from 'mysql2/promise';
 
 const enabled = process.env.ANALYTICS_INTEGRATION === 'true';
 const identity = newIdentity(crypto.randomUUID(), undefined, true);
+const visitors = [identity.visitor];
 const ids: string[] = [];
 const id = () => { const value = crypto.randomUUID(); ids.push(value); return value; };
 afterAll(async () => {
   if (!enabled) return;
   const pool = analyticsPool();
-  const visitor = visitorHash(identity.visitor, true);
-  for (const table of ['analytics_events', 'analytics_playback', 'analytics_receipts', 'analytics_visitors']) {
-    await pool.query(`DELETE FROM ${table} WHERE visitor_id=? AND is_test=1`, [visitor]);
+  for (const visitor of visitors) {
+    for (const table of ['analytics_events', 'analytics_playback', 'analytics_receipts', 'analytics_visitors']) {
+      await pool.query(`DELETE FROM ${table} WHERE visitor_id=? AND is_test=1`, [visitorHash(visitor, true)]);
+    }
   }
   if (ids.length) await pool.query('DELETE FROM analytics_search_sources WHERE is_test=1 AND search_id IN (?)', [ids]);
   await pool.end();
@@ -87,23 +89,44 @@ test.skipIf(!enabled)('real TLS database: deduplication, ordered snapshots, owne
       expect(report.cards.find(c => c.key === 'play')?.value).toBe(100);
     }
   }
-  await ingestEvents(validateEvents([event('page_view', { page: '/' })], now), identity, dimensions, { ...network, province: '33', city: 'Hangzhou', asn: 4837, operator: '中国联通' });
+  await ingestEvents(validateEvents([event('page_view', { page: '/', at: now + 1 })], now + 1), identity, dimensions, { ...network, province: '33', city: 'Hangzhou', asn: 4837, operator: '中国联通' });
   await ingestEvents(validateEvents([event('page_view', { page: '/' })], now), identity, dimensions, { ip: '2001:db8::1', country: 'US', province: '' });
-  const regional = await analyticsReport(parseReportFilter(new URL('http://localhost?test=1&view=traffic&page=2')));
+  const regional = await analyticsReport(parseReportFilter(new URL(`http://localhost?test=1&view=traffic&page=2&from=${today}&to=${today}`)));
   expect(regional.geography?.total).toEqual({ views: 3, ips: 2, visitors: 1, sessions: 1 });
   expect(regional.geography?.provinces.find(row => row.code === '33')).toMatchObject({ views: 1, ips: 1, visitors: 1 });
   expect(regional.geography?.overseas).toEqual({ views: 1, ips: 1, visitors: 1, sessions: 1 });
-  expect(regional.tables.find(t => t.key === 'ips')).toMatchObject({ rows: [], total: 3, page: 2 });
-  const mobile = await analyticsReport(parseReportFilter(new URL('http://localhost?test=1&view=traffic&device=mobile')));
+  expect(regional.tables.find(t => t.key === 'ips')).toMatchObject({ rows: [], total: 2, page: 2 });
+  const merged = await analyticsReport(parseReportFilter(new URL(`http://localhost?test=1&view=traffic&from=${today}&to=${today}`)));
+  expect(merged.tables.find(t => t.key === 'ips')?.rows.filter(row => row.network_ip === network.ip)).toEqual([
+    expect.objectContaining({ province_name: '浙江', city_name: 'Hangzhou', operator_name: '中国联通', asn: 4837, views: 2, visitors: 1, sessions: 1 }),
+  ]);
+  const mobile = await analyticsReport(parseReportFilter(new URL(`http://localhost?test=1&view=traffic&device=mobile&from=${today}&to=${today}`)));
   expect(mobile.geography?.total.views).toBe(0);
-  const selected = await analyticsReport(parseReportFilter(new URL('http://localhost?test=1&view=traffic&province=44')));
+  const selected = await analyticsReport(parseReportFilter(new URL(`http://localhost?test=1&view=traffic&province=44&from=${today}&to=${today}`)));
   expect(selected.province).toBe('44');
   expect(selected.geography?.total.views).toBe(3);
   expect(selected.tables.find(t => t.key === 'ips')?.rows).toEqual([expect.objectContaining({ province_name: '广东', city_name: 'Guangzhou', operator_name: '中国电信', asn: 4134, views: 1 })]);
   expect(selected.tables.find(t => t.key === 'cities')?.rows).toEqual([expect.objectContaining({ province_name: '广东', city_name: 'Guangzhou', views: 1, ips: 1 })]);
   expect(selected.tables.find(t => t.key === 'operators')?.rows).toEqual([expect.objectContaining({ operator_name: '中国电信', asns: 1, ips: 1 })]);
   expect(reportCsv(selected)).toContain('明细省份:44');
-  const emptyProvince = await analyticsReport(parseReportFilter(new URL('http://localhost?test=1&view=traffic&province=54')));
+  const emptyProvince = await analyticsReport(parseReportFilter(new URL(`http://localhost?test=1&view=traffic&province=54&from=${today}&to=${today}`)));
   expect(emptyProvince.geography?.total.views).toBe(3);
   for (const key of ['ips', 'cities', 'operators']) expect(emptyProvince.tables.find(t => t.key === key)?.rows).toEqual([]);
+  const anotherDevice = newIdentity(crypto.randomUUID(), undefined, true);
+  visitors.push(anotherDevice.visitor);
+  const unknown = { ip: network.ip, country: '', province: '', city: '', asn: 0, operator: '未知' };
+  for (const actor of [identity, newIdentity(identity.visitor, undefined, true), anotherDevice]) {
+    await ingestEvents(validateEvents([event('page_view', { page: '/', at: now + 3 })], now + 3), actor, dimensions, unknown);
+  }
+  await ingestEvents(validateEvents([event('session_start', { at: now + 2 })], now + 2), identity, dimensions, { ...unknown, city: 'Ningbo' });
+  const enriched = await analyticsReport(parseReportFilter(new URL(`http://localhost?test=1&view=traffic&from=${today}&to=${today}`)));
+  expect(enriched.tables.find(t => t.key === 'ips')?.rows.filter(row => row.network_ip === network.ip)).toEqual([
+    expect.objectContaining({ country: 'CN', province_name: '浙江', city_name: 'Ningbo', operator_name: '中国联通', asn: 4837, views: 5, visitors: 2, sessions: 3,
+      first_seen: new Date(now + 8 * 3600000).toISOString().replace('T', ' ').replace('Z', ''),
+      last_seen: new Date(now + 3 + 8 * 3600000).toISOString().replace('T', ' ').replace('Z', '') }),
+  ]);
+  expect(enriched.tables.find(t => t.key === 'ips')?.rows).toContainEqual(expect.objectContaining({ network_ip: '2001:db8::1', city_name: '未知', operator_name: '未知', asn: null }));
+  expect(reportCsv(enriched).split('\r\n').filter(line => line.includes(network.ip))).toHaveLength(1);
+  const [history] = await analyticsPool().query<RowDataPacket[]>('SELECT city,network_asn FROM analytics_events WHERE event_id=?', [raw[0].id]);
+  expect(history[0]).toMatchObject({ city: 'Guangzhou', network_asn: 4134 });
 }, 120000);
