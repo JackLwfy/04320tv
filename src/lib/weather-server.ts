@@ -8,7 +8,7 @@ const LIMIT = 120;
 function configuration() {
   const host = process.env.QWEATHER_API_HOST?.trim() || '';
   const key = process.env.QWEATHER_API_KEY?.trim() || '';
-  return /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.qweatherapi\.com$/.test(host) && key && !/[\r\n]/.test(key) ? { host, key } : null;
+  return host.length <= 253 && /^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+qweatherapi\.com$/.test(host) && key && !/[\r\n]/.test(key) ? { host, key } : null;
 }
 export function weatherConfigured() { return !!configuration(); }
 export function weatherStatus() {

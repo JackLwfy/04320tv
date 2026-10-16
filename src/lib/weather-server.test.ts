@@ -6,12 +6,20 @@ describe('weather server', () => {
   it('fails closed for missing credentials and arbitrary API hosts', async () => {
     const fetcher = vi.fn(); vi.stubGlobal('fetch', fetcher);
     const server = await import('./weather-server');
-    for (const host of ['', 'https://test.qweatherapi.com', 'test.qweatherapi.com.evil.test', 'localhost', 'test.qweatherapi.com/path']) {
+    for (const host of ['', 'https://test.qweatherapi.com', 'test.qweatherapi.com.evil.test', 'localhost', 'test.qweatherapi.com/path', 'test..qweatherapi.com', '-test.qweatherapi.com', 'test-.qweatherapi.com', 'qweatherapi.com']) {
       vi.stubEnv('QWEATHER_API_HOST', host);
       expect(server.weatherConfigured()).toBe(false);
       expect(await server.currentWeather(39.9, 116.4)).toBeNull();
     }
     expect(fetcher).not.toHaveBeenCalled();
+  });
+  it('accepts the dedicated multi-label API Host issued by QWeather', async () => {
+    vi.stubEnv('QWEATHER_API_HOST', 'h2a9cf3mhs.xy.qweatherapi.com');
+    const fetcher = vi.fn(async () => Response.json(reading)); vi.stubGlobal('fetch', fetcher);
+    const server = await import('./weather-server');
+    expect(server.weatherConfigured()).toBe(true);
+    expect(await server.currentWeather(39.9, 116.4)).toMatchObject({ kind: 'rain' });
+    expect(fetcher).toHaveBeenCalledWith('https://h2a9cf3mhs.xy.qweatherapi.com/weather/v1/current/39.90/116.40?lang=zh', expect.anything());
   });
   it('uses the v1 contract, coalesces requests and caches rounded coordinates', async () => {
     const fetcher = vi.fn(async () => Response.json(reading)); vi.stubGlobal('fetch', fetcher);
