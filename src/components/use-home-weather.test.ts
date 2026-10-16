@@ -81,6 +81,46 @@ describe('home weather lifecycle', () => {
     render(); await settle();
     expect(value.kind).toBe('rain'); expect(value.pending).toBe(false); expect(value.city).toEqual(beijing);
   });
+  it('localizes an English native city using nearby coordinates and reuses its cache', async () => {
+    const native = { name: 'Chengdu', region: 'Sichuan', country: '中国', lat: 30.67, lon: 104.07 };
+    const chengdu = { ...native, name: '成都', region: '四川 · 成都市' };
+    const fetcher = vi.fn(async (url: string) => Response.json(url.endsWith('/location') ? { city: native } : url.includes('/cities?') ? { cities: [{ ...chengdu, lat: 31.12, lon: 107.44 }, chengdu] } : { weather: weather() }));
+    vi.stubGlobal('fetch', fetcher);
+    render(); await settle();
+    expect(value.city).toEqual(chengdu); expect(value.kind).toBe('rain');
+    expect(fetcher).toHaveBeenCalledWith('/api/weather/cities?q=Chengdu', expect.anything());
+    expect(JSON.parse(sessionStorage.getItem('04320-weather-cache-open-meteo')!).city).toEqual(chengdu);
+    const visible = vi.mocked(document.addEventListener).mock.calls.find(([name]) => name === 'visibilitychange')![1] as () => void;
+    visible(); await settle();
+    expect(fetcher).toHaveBeenCalledTimes(3);
+  });
+  it('repairs an English cached city without re-fetching its fresh weather', async () => {
+    const native = { name: 'Chengdu', region: 'Sichuan', country: '中国', lat: 30.67, lon: 104.07 };
+    const chengdu = { ...native, name: '成都', region: '四川 · 成都市' };
+    sessionStorage.setItem('04320-weather-cache-open-meteo', JSON.stringify({ preference: 'auto', city: native, weather: weather() }));
+    const fetcher = vi.fn(async () => Response.json({ cities: [chengdu] })); vi.stubGlobal('fetch', fetcher);
+    render(); await settle();
+    expect(value.city).toEqual(chengdu); expect(value.weather?.kind).toBe('rain');
+    expect(fetcher).toHaveBeenCalledTimes(1);
+  });
+  it('keeps valid weather and uses a Chinese fallback if city translation fails or is too far away', async () => {
+    const native = { name: 'Chengdu', region: 'Sichuan', country: '中国', lat: 30.67, lon: 104.07 };
+    const fetcher = vi.fn(async (url: string) => {
+      if (url.endsWith('/location')) return Response.json({ city: native });
+      if (url.includes('/cities?')) return Response.json({ cities: [beijing] });
+      return Response.json({ weather: weather() });
+    });
+    vi.stubGlobal('fetch', fetcher); render(); await settle();
+    expect(value.city).toEqual({ ...native, name: '所在城市', region: '' });
+    expect(value.weather?.kind).toBe('rain');
+    fetcher.mockImplementation(async (url: string) => {
+      if (url.endsWith('/location')) return Response.json({ city: native });
+      if (url.includes('/cities?')) throw new Error('offline');
+      return Response.json({ weather: weather() });
+    });
+    value.choose('auto'); await settle();
+    expect(value.city?.name).toBe('所在城市'); expect(value.weather?.kind).toBe('rain');
+  });
   it('never requests weather for persisted off preference or a disabled feature', async () => {
     localStorage.setItem('04320-weather-preference', '"off"');
     const fetcher = vi.fn(); vi.stubGlobal('fetch', fetcher);

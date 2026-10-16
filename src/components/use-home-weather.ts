@@ -21,6 +21,17 @@ async function json(url: string, signal: AbortSignal) {
   if (!response.ok) throw new Error('天气暂不可用');
   return response.json();
 }
+async function chineseCity(city: WeatherCity, signal: AbortSignal): Promise<WeatherCity> {
+  if (/\p{Script=Han}/u.test(city.name) && !/[a-z]/i.test(city.name)) return city;
+  try {
+    const data = await json(`/api/weather/cities?q=${encodeURIComponent(city.name)}`, signal);
+    const distance = (candidate: WeatherCity) => (candidate.lat - city.lat) ** 2 + ((candidate.lon - city.lon) * Math.cos(city.lat * Math.PI / 180)) ** 2;
+    const candidates: WeatherCity[] = Array.isArray(data.cities) ? data.cities.filter(validCity).filter((candidate: WeatherCity) => /\p{Script=Han}/u.test(candidate.name) && !/[a-z]/i.test(candidate.name) && distance(candidate) <= 1) : [];
+    const nearest = candidates.sort((a, b) => distance(a) - distance(b))[0];
+    if (nearest) return { ...city, name: nearest.name, region: nearest.region, country: nearest.country };
+  } catch { /* 名称查询失败仍可按原坐标获取天气。 */ }
+  return { ...city, name: '所在城市', region: '', country: '中国' };
+}
 export function useHomeWeather(enabled: boolean, ready: boolean) {
   const [preference, setPreference] = useState<Preference>('auto');
   const [city, setCity] = useState<WeatherCity | null>(null);
@@ -64,7 +75,12 @@ export function useHomeWeather(enabled: boolean, ready: boolean) {
         } catch { /* 忽略过期或无效缓存。 */ }
         if (!location) { const geo = await json('/api/weather/location', controller.signal); if (validCity(geo.city)) location = geo.city; }
         if (!location) throw new Error('未能识别城市，可手动选择');
-        if (!reading) { const result = await json(`/api/weather/current?lat=${location.lat.toFixed(2)}&lon=${location.lon.toFixed(2)}`, controller.signal); if (freshWeather(result.weather)) reading = result.weather; }
+        const [localized, result] = await Promise.all([
+          chineseCity(location, activeController.signal),
+          reading ? Promise.resolve({ weather: reading }) : json(`/api/weather/current?lat=${location.lat.toFixed(2)}&lon=${location.lon.toFixed(2)}`, activeController.signal),
+        ]);
+        location = localized;
+        reading = freshWeather(result.weather) ? result.weather : null;
         if (!reading) throw new Error('天气暂不可用，继续欣赏此刻光影');
         if (stopped || epoch !== request) return;
         setCity(location); setWeather(reading); setMessage('');

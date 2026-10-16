@@ -57,11 +57,11 @@
 .cinema-hero-copy h1 { white-space: pre-line; overflow-wrap: anywhere; }
 .cinema-hero-caption { margin: -12px 0 24px; font-size: 14px; color: #d3d8c9; }
 .cinema-weather { position: relative; z-index: 12; width: fit-content; max-width: 100%; margin-bottom: 22px; font-size: 12px; }
+.cinema-weather-row { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 16px; }
+.cinema-weather-attribution { font-size: 10px; color: #b6c39e; white-space: nowrap; }
 .cinema-weather-trigger { display: flex; gap: 9px; align-items: center; text-align: left; color: #e4e8df; }
 .cinema-weather-dot { width: 5px; height: 5px; border-radius: 50%; background: #dce89e; flex-shrink: 0; box-shadow: 0 0 12px #dce89e66; }
 .cinema-weather-action { color: #b6c39e; padding-left: 8px; white-space: nowrap; }
-.cinema-weather-source { display: block; margin: 6px 0 0 14px; color: #c0cbb9; font-size: 10px; }
-.cinema-weather-source a { text-decoration: underline; text-underline-offset: 3px; }
 .cinema-weather-panel { position: absolute; top: calc(100% + 14px); left: 0; width: min(390px, calc(100vw - 40px)); padding: 23px; background: #17201e; border: 1px solid #53605a; border-radius: 16px; box-shadow: 0 20px 70px #0008; color: #eef1e9; }
 .cinema-weather-heading { display: flex; justify-content: space-between; align-items: start; gap: 16px; }
 .cinema-weather-heading small { font-size: 9px; letter-spacing: .17em; color: #c7d69d; }
