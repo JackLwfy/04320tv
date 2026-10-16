@@ -97,7 +97,7 @@ describe('home weather lifecycle', () => {
     latest.resolve(Response.json({ weather: weather('snow') })); await settle();
     old.resolve(Response.json({ weather: weather('rain') })); await settle();
     expect(value.city).toEqual(shanghai); expect(value.kind).toBe('snow');
-    expect(JSON.parse(sessionStorage.getItem('04320-weather-cache')!).city).toEqual(shanghai);
+    expect(JSON.parse(sessionStorage.getItem('04320-weather-cache-open-meteo')!).city).toEqual(shanghai);
   });
   it('clears an expired weather scene on failure and recovers on retry', async () => {
     localStorage.setItem('04320-weather-preference', JSON.stringify(beijing));

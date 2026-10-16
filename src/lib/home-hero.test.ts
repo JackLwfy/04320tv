@@ -18,7 +18,7 @@ describe('home hero schedule', () => {
       const date = new Date(`2026-10-15T${time}:00+08:00`);
       for (const kind of ['rain', 'snow'] as const) expect(heroForWeather(config, date, kind).id).toBe(`${kind}-${period}`);
       expect(heroForWeather(config, date, 'none')).toEqual(heroAt(config, date));
-      expect(heroForWeather(defaultHeroConfig, date, 'rain')).toEqual(heroAt(defaultHeroConfig, date));
+      expect(heroForWeather({ ...defaultHeroConfig, mode: 'auto' }, date, 'rain')).toEqual(heroAt(defaultHeroConfig, date));
       expect(heroForWeather({ ...config, mode: 'fixed', fixed: 'snow-day' }, date, 'rain').id).toBe('snow-day');
     }
     config.slots.find(slot => slot.id === 'sunset')!.start = 1000;

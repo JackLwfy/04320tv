@@ -44,6 +44,7 @@ export function HomeWeatherControl({ state }: { state: HomeWeather }) {
       <form onSubmit={search}><label htmlFor="weather-city">城市名称</label><div className="cinema-weather-search"><input id="weather-city" value={query} onChange={event => setQuery(event.target.value)} maxLength={60} placeholder="例如：杭州" autoComplete="off" /><button type="submit" disabled={query.trim().length < 2}>查找</button></div></form>
       <p role="status">{status}</p>
       {results.length > 0 && <ul>{results.map((city, index) => <li key={`${city.lat},${city.lon},${index}`}><button type="button" onClick={() => { state.choose(city); setResults([]); setStatus('已选择城市，正在更新天气'); }}>{city.name}<span>{city.region} · {city.country}</span></button></li>)}</ul>}
+      {results.length > 0 && <p className="cinema-weather-credit">城市数据：<a href="https://www.geonames.org/" target="_blank" rel="noopener noreferrer">GeoNames</a></p>}
       <div className="cinema-weather-options"><button type="button" onClick={() => { state.choose('auto'); setStatus('已恢复自动识别'); }}>恢复自动识别</button><button type="button" onClick={() => { state.choose(off ? 'auto' : 'off'); setStatus(''); }}>{off ? '开启天气氛围' : '关闭天气氛围'}</button></div>
       {state.weather && <p className="cinema-weather-credit">获取于 {new Date(state.weather.fetchedAt).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })} · 每 30 分钟更新</p>}
     </section>}

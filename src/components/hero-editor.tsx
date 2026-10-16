@@ -29,15 +29,15 @@ export function HeroEditor({ value, onChange, disabled = false, description = '�
   const [minute, setMinute] = useState(1140);
   const [mobile, setMobile] = useState(false);
   const [weather, setWeather] = useState<'rain' | 'snow' | 'none'>('none');
-  const [weatherStatus, setWeatherStatus] = useState('正在读取天气服务配置…');
+  const [weatherStatus, setWeatherStatus] = useState('正在读取天气服务状态…');
   const [testingWeather, setTestingWeather] = useState(false);
   useEffect(() => {
     const controller = new AbortController();
     fetch('/api/admin/weather', { signal: controller.signal }).then(async response => {
       const result = await response.json();
       if (!response.ok) throw new Error();
-      setWeatherStatus(result.message || (result.configured ? '天气服务已配置，可测试连接。' : '天气服务尚未配置，仍可模拟晴雨雪。'));
-    }).catch(() => { if (!controller.signal.aborted) setWeatherStatus('暂时无法读取天气配置，模拟预览仍可使用。'); });
+      setWeatherStatus(result.message || 'Open-Meteo 免费天气，无需账号或密钥。');
+    }).catch(() => { if (!controller.signal.aborted) setWeatherStatus('暂时无法读取天气状态，模拟预览仍可使用。'); });
     return () => controller.abort();
   }, []);
   async function testWeather() {
@@ -45,7 +45,7 @@ export function HeroEditor({ value, onChange, disabled = false, description = '�
     try {
       const response = await fetch('/api/admin/weather', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
       const result = await response.json();
-      setWeatherStatus(result.message || (response.ok ? '天气服务连接成功。' : '天气服务连接未成功，请检查服务端配置。'));
+      setWeatherStatus(result.message || (response.ok ? '天气服务连接成功。' : '天气服务暂时不可用，请稍后重试。'));
     } catch { setWeatherStatus('连接测试失败，请稍后重试。'); }
     finally { setTestingWeather(false); }
   }
@@ -78,7 +78,7 @@ export function HeroEditor({ value, onChange, disabled = false, description = '�
       <label className={s.field}>固定主题<select value={value.fixed} disabled={disabled || value.mode !== 'fixed'} onChange={event => onChange({ ...value, fixed: event.target.value })}>{allScenes.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
       <p className={s.note}>修改后需“保存并部署”才会发布到首页。发布后每天自动切换，无需重复部署。</p>
     </div>
-    <div className={s.weatherStatus}><div><strong>天气服务</strong><p aria-live="polite">{weatherStatus}</p><small>连接信息仅保存在服务端。天气不可用时沿用六时段；固定主题不受天气影响。</small></div><button type="button" className={s.textButton} disabled={disabled || testingWeather} onClick={testWeather}>{testingWeather ? '正在测试…' : '测试连接'}</button></div>
+    <div className={s.weatherStatus}><div><strong>天气服务</strong><p aria-live="polite">{weatherStatus}</p><small>自动更新，无需维护密钥。天气不可用时沿用六时段；固定主题不受天气影响。</small></div><button type="button" className={s.textButton} disabled={disabled || testingWeather} onClick={testWeather}>{testingWeather ? '正在测试…' : '测试连接'}</button></div>
     <div className={s.scenes} aria-label="选择要编辑的时段">{value.slots.map(item => <button type="button" key={item.id} className={`${s.scene} ${slot.id === item.id ? s.active : ''}`} aria-pressed={slot.id === item.id} onClick={() => { setSelected(item.id); setMinute(item.start); setWeather('none'); setConfirm(null); }}><HeroImage src={item.image} position={item.position} /><span>{item.name}<small>{clock(item.start)}</small></span></button>)}</div>
     <div className={`${s.scenes} ${s.weatherScenes}`} aria-label="选择要编辑的天气场景">{value.weather.map(item => <button type="button" key={item.id} className={`${s.scene} ${slot.id === item.id ? s.active : ''}`} aria-pressed={slot.id === item.id} onClick={() => { setSelected(item.id); setWeather(item.id.startsWith('rain') ? 'rain' : 'snow'); setMinute(value.slots.find(scene => scene.id === (item.id.endsWith('day') ? 'day' : 'evening'))!.start); setConfirm(null); }}><HeroImage src={item.image} position={item.position} /><span>{item.name}<small>{item.id.endsWith('day') ? '白昼' : '入夜'}</small></span></button>)}</div>
     <div className={s.layout}>

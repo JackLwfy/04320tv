@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import type { WeatherCity, WeatherReading } from '@/lib/weather';
 
 const preferenceKey = '04320-weather-preference';
-const cacheKey = '04320-weather-cache';
+const cacheKey = '04320-weather-cache-open-meteo';
 type Preference = 'auto' | 'off' | WeatherCity;
 export function validCity(value: unknown): value is WeatherCity {
   if (!value || typeof value !== 'object') return false;

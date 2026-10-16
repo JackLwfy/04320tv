@@ -9,7 +9,7 @@ describe('weather route guards', () => {
     vi.stubEnv('PASSWORD', 'test-only');
     for (const route of [current, cities, location]) expect((await route(new Request('https://example.test/api/weather/current?lat=1&lon=1'))).status).toBe(401);
   });
-  it('requires admin authentication for diagnostics and paid connectivity checks', async () => {
+  it('requires admin authentication for diagnostics and connectivity checks', async () => {
     vi.stubEnv('ADMIN_PASSWORD_HASH', '');
     const fetcher = vi.fn(); vi.stubGlobal('fetch', fetcher);
     expect((await adminStatus(new Request('https://example.test/api/admin/weather'))).status).toBe(401);

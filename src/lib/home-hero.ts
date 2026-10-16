@@ -8,7 +8,7 @@ const weatherIds = ['rain-day', 'rain-night', 'snow-day', 'snow-night'] as const
 const envKey = (id: string) => `NEXT_PUBLIC_HERO_${id.toUpperCase().replaceAll('-', '_')}`;
 export const heroEnvKeys = ['NEXT_PUBLIC_HERO_MODE', 'NEXT_PUBLIC_HERO_FIXED', ...[...ids, ...weatherIds].map(envKey)];
 export const defaultHeroConfig: HeroConfig = {
-  mode: 'auto', fixed: 'evening',
+  mode: 'weather', fixed: 'evening',
   slots: [
     ['dawn', '晨光', 300, '天刚亮，\n故事正要开始。', '给今天，留一点想象。'],
     ['day', '日间', 540, '日光正好，\n遇见另一种人生。', '从一段光影，发现新的世界。'],
