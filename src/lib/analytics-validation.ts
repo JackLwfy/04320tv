@@ -53,6 +53,7 @@ export function validateEvents(input: unknown, now = Date.now()): ValidEvent[] {
     if (at < now - DAY_MS) throw new Error('统计事件已过期。');
     const event: ValidEvent = {
       type, id: uuid(raw.id, true)!, at: Math.min(at, now),
+      promotionId: raw.promotionId ? uuid(raw.promotionId) : undefined, promotionVisitId: raw.promotionVisitId ? uuid(raw.promotionVisitId) : undefined,
       media: choice(raw.media, ['vod', 'live']),
       sourceKey: sourceHash(raw.sourceKey), sourceName: privateText(raw.sourceName, 96),
       sourceOrigin: choice(raw.sourceOrigin, ['site', 'custom'], 'custom'),
@@ -65,6 +66,7 @@ export function validateEvents(input: unknown, now = Date.now()): ValidEvent[] {
       referrer: '', campaign: privateText(raw.campaign, 80),
       errorCode: errorCode(raw.errorCode), recommendationId: privateText(raw.recommendationId, 100),
     };
+    if (type === 'promotion_entry' && (!event.promotionId || !event.promotionVisitId || event.id !== event.promotionVisitId)) throw new Error('推广入口标识缺失。');
     if (raw.referrer) {
       try {
         const value = text(raw.referrer, 2048);

@@ -28,7 +28,7 @@ export async function ingestEvents(events: ValidEvent[], identity: AnalyticsIden
   const isTest = identity.test ? 1 : 0;
   const now = sqlDate(Date.now());
   // One logical search must remain one record even when a transport retry uses another event ID.
-  const items = events.map(e => e.type === 'search' ? { ...e, id: e.searchId! } : e);
+  const items = events.map(e => e.type === 'search' ? { ...e, id: e.searchId! } : { ...e });
   try {
     await connection.beginTransaction();
     const [meta] = await query(connection, 'SELECT enabled FROM analytics_meta WHERE id=1');
@@ -38,11 +38,38 @@ export async function ingestEvents(events: ValidEvent[], identity: AnalyticsIden
     const ids = new Set(receipts.map(row => row.event_id));
     const used = new Set<string>();
     const accepted = items.filter(e => ids.has(e.id) && !used.has(e.id) && !!used.add(e.id));
+    const promotionIds = [...new Set(accepted.map(e => e.promotionId).filter(Boolean))];
+    if (promotionIds.length) {
+      const [links] = await query(connection, 'SELECT id FROM analytics_promotion_links WHERE id IN (?)', [promotionIds]);
+      const known = new Set(links.map(row => row.id));
+      // Entry retries keep the original identity and entry time; no request can take over a visit.
+      for (const e of accepted.filter(e => e.type === 'promotion_entry' && known.has(e.promotionId))) {
+        await query(connection, `INSERT IGNORE INTO analytics_promotion_visits
+          (visit_id,link_id,visitor_id,is_test,entered_at,last_activity_at,device,browser,page,country,province,city) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`,
+        [e.promotionVisitId, e.promotionId, visitor, isTest, sqlDate(e.at), sqlDate(e.at), dimensions.device, dimensions.browser, e.page || '/', network.country, network.province, network.city || '']);
+      }
+      const visitIds = [...new Set(accepted.map(e => e.promotionVisitId).filter(Boolean))];
+      const [visits] = visitIds.length ? await query(connection, 'SELECT visit_id,link_id,visitor_id,is_test,entered_at,last_activity_at FROM analytics_promotion_visits WHERE visit_id IN (?) FOR UPDATE', [visitIds]) : [[]];
+      const time = (value: unknown) => value instanceof Date ? value.getTime() : Date.parse(String(value).replace(' ', 'T') + 'Z');
+      const registry = new Map<string, { link_id: string; visitor_id: string; is_test: number; entered: number; activity: number }>(visits.map(row => [row.visit_id, { link_id: row.link_id, visitor_id: row.visitor_id, is_test: Number(row.is_test), entered: time(row.entered_at), activity: time(row.last_activity_at) }]));
+      for (const e of [...accepted].sort((a, b) => a.at - b.at)) {
+        const visit = registry.get(e.promotionVisitId || '');
+        const eventAt = e.type === 'playback' ? e.startedAt! : e.at;
+        if (!known.has(e.promotionId) || !visit || visit.link_id !== e.promotionId || visit.visitor_id !== visitor || Number(visit.is_test) !== isTest || eventAt < visit.entered || eventAt > visit.activity + 30 * 60_000) {
+          e.promotionId = undefined; e.promotionVisitId = undefined;
+        } else if (e.type !== 'promotion_entry' && e.at <= visit.activity + 30 * 60_000 && e.at > visit.activity) {
+          visit.activity = e.at;
+          await query(connection, 'UPDATE analytics_promotion_visits SET last_activity_at=GREATEST(last_activity_at,?) WHERE visit_id=?', [sqlDate(e.at), e.promotionVisitId]);
+        }
+      }
+    } else {
+      for (const e of accepted) { e.promotionId = undefined; e.promotionVisitId = undefined; }
+    }
     const facts = accepted.filter(e => e.type !== 'playback');
     if (facts.length) {
       await query(connection, `INSERT IGNORE INTO analytics_events
-        (event_id,occurred_at,visitor_id,session_id,kind,is_test,media,device,browser,source_key,source_name,source_origin,vod_id,title,episode,search_id,query_text,status,result_count,duration_ms,page,referrer,campaign,error_code,recommendation_id,network_ip,country,province,city,network_asn,network_operator) VALUES ?`,
-      [facts.map(e => [e.id, sqlDate(e.at), visitor, identity.session, e.type, isTest, e.media || '', dimensions.device, dimensions.browser, e.sourceKey, e.sourceName || '', e.sourceOrigin || '', e.vodId || '', e.title || '', e.episode ?? null, e.searchId || null, e.query || '', e.searchStatus || '', e.resultCount || 0, e.durationMs || 0, e.page || '', e.referrer || '', e.campaign || '', e.errorCode || '', e.recommendationId || '', network.ip, network.country, network.province, network.city || '', network.asn || 0, network.operator || '未知'])]);
+        (event_id,occurred_at,visitor_id,session_id,kind,is_test,media,device,browser,source_key,source_name,source_origin,vod_id,title,episode,search_id,query_text,status,result_count,duration_ms,page,referrer,campaign,error_code,recommendation_id,network_ip,country,province,city,network_asn,network_operator,promotion_id,promotion_visit_id) VALUES ?`,
+      [facts.map(e => [e.id, sqlDate(e.at), visitor, identity.session, e.type, isTest, e.media || '', dimensions.device, dimensions.browser, e.sourceKey, e.sourceName || '', e.sourceOrigin || '', e.vodId || '', e.title || '', e.episode ?? null, e.searchId || null, e.query || '', e.searchStatus || '', e.resultCount || 0, e.durationMs || 0, e.page || '', e.referrer || '', e.campaign || '', e.errorCode || '', e.recommendationId || '', network.ip, network.country, network.province, network.city || '', network.asn || 0, network.operator || '未知', e.promotionId || '', e.promotionVisitId || ''])]);
     }
     const outcomes = accepted.flatMap(e => (e.outcomes || []).map(o => [e.searchId, o.sourceKey, o.sourceName, o.sourceOrigin || 'custom', sqlDate(e.at), isTest, dimensions.device, dimensions.browser, o.status, o.durationMs, o.resultCount, o.errorCode || '']));
     if (outcomes.length) await query(connection, 'INSERT IGNORE INTO analytics_search_sources (search_id,source_key,source_name,source_origin,occurred_at,is_test,device,browser,status,duration_ms,result_count,error_code) VALUES ?', [outcomes]);
@@ -60,9 +87,9 @@ export async function ingestEvents(events: ValidEvent[], identity: AnalyticsIden
         `sequence_no=IF(${guard},VALUES(sequence_no),sequence_no)`,
       ].join(',');
       await query(connection, `INSERT INTO analytics_playback
-        (attempt_id,watch_id,visitor_id,session_id,search_id,recommendation_id,started_at,updated_at,received_at,sequence_no,is_test,media,device,browser,source_key,source_name,source_origin,vod_id,title,episode,status,played_ms,hidden_played_ms,buffer_ms,buffer_count,seek_buffer_ms,first_frame_ms,first_frame_method,position_ms,media_duration_ms,error_code,previous_attempt_id,switch_reason)
+        (attempt_id,watch_id,visitor_id,session_id,search_id,recommendation_id,started_at,updated_at,received_at,sequence_no,is_test,media,device,browser,source_key,source_name,source_origin,vod_id,title,episode,status,played_ms,hidden_played_ms,buffer_ms,buffer_count,seek_buffer_ms,first_frame_ms,first_frame_method,position_ms,media_duration_ms,error_code,previous_attempt_id,switch_reason,promotion_id,promotion_visit_id)
         VALUES ? ON DUPLICATE KEY UPDATE ${updates}`,
-      [plays.map(e => [e.attemptId, e.watchId, visitor, identity.session, e.searchId || null, e.recommendationId || '', sqlDate(e.startedAt!), sqlDate(e.at), now, e.sequence, isTest, e.media, dimensions.device, dimensions.browser, e.sourceKey, e.sourceName || '', e.sourceOrigin || '', e.vodId || '', e.title || '', e.episode ?? null, e.playbackStatus, e.playedMs || 0, e.hiddenPlayedMs || 0, e.bufferMs || 0, e.bufferCount || 0, e.seekBufferMs || 0, e.firstFrameMs ?? null, e.firstFrameMethod || '', e.positionMs || 0, e.mediaDurationMs || 0, e.errorCode || '', e.previousAttemptId || null, e.switchReason || ''])]);
+      [plays.map(e => [e.attemptId, e.watchId, visitor, identity.session, e.searchId || null, e.recommendationId || '', sqlDate(e.startedAt!), sqlDate(e.at), now, e.sequence, isTest, e.media, dimensions.device, dimensions.browser, e.sourceKey, e.sourceName || '', e.sourceOrigin || '', e.vodId || '', e.title || '', e.episode ?? null, e.playbackStatus, e.playedMs || 0, e.hiddenPlayedMs || 0, e.bufferMs || 0, e.bufferCount || 0, e.seekBufferMs || 0, e.firstFrameMs ?? null, e.firstFrameMethod || '', e.positionMs || 0, e.mediaDurationMs || 0, e.errorCode || '', e.previousAttemptId || null, e.switchReason || '', e.promotionId || '', e.promotionVisitId || ''])]);
     }
     if (accepted.length) {
       const oldest = sqlDate(Math.min(...accepted.map(e => e.at)));

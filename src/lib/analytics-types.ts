@@ -1,4 +1,4 @@
-export const ANALYTICS_EVENT_TYPES = ['session_start', 'page_view', 'detail_view', 'search', 'search_click', 'recommendation_impression', 'recommendation_click', 'playback', 'newsletter_impression', 'newsletter_close', 'newsletter_submit', 'newsletter_accepted', 'newsletter_error'] as const;
+export const ANALYTICS_EVENT_TYPES = ['promotion_entry', 'session_start', 'page_view', 'detail_view', 'search', 'search_click', 'recommendation_impression', 'recommendation_click', 'playback', 'newsletter_impression', 'newsletter_close', 'newsletter_submit', 'newsletter_accepted', 'newsletter_error'] as const;
 export type AnalyticsEventType = typeof ANALYTICS_EVENT_TYPES[number];
 export type MediaKind = 'vod' | 'live';
 export type PlaybackStatus = 'loading' | 'playing' | 'ended' | 'error' | 'abandoned' | 'timeout';
@@ -10,6 +10,7 @@ export interface AnalyticsEventInput {
   type: AnalyticsEventType;
   id?: string; at?: number;
   page?: string; referrer?: string; campaign?: string;
+  promotionId?: string; promotionVisitId?: string;
   media?: MediaKind; sourceKey?: string; sourceName?: string; sourceOrigin?: 'site' | 'custom';
   vodId?: string; title?: string; episode?: number;
   searchId?: string; query?: string; searchStatus?: 'success' | 'empty' | 'partial' | 'error' | 'cancelled';

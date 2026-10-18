@@ -169,4 +169,35 @@ describe('analytics ingest transaction', () => {
     await expect(ingestEvents(validateEvents([base()], now), newIdentity(visitor, undefined, true, now), { device: 'desktop', browser: 'Chrome' })).rejects.toThrow('database unavailable');
     expect(c.commit).not.toHaveBeenCalled(); expect(c.rollback).toHaveBeenCalledOnce(); expect(c.release).toHaveBeenCalledOnce();
   });
+  it('requires known promotion, matching owner and an active visit while retaining ordinary facts', async () => {
+    const promotionId = crypto.randomUUID(), visitId = crypto.randomUUID();
+    const identity = newIdentity(visitor, undefined, true, now);
+    let owner = visitorHash(visitor, true);
+    let activity = now;
+    const calls: { sql: string; values: unknown[] }[] = [];
+    const c = { beginTransaction: vi.fn(), commit: vi.fn(), rollback: vi.fn(), release: vi.fn(), query: vi.fn(async (config: { sql: string }, values: unknown[]) => {
+      calls.push({ sql: config.sql, values });
+      if (config.sql.startsWith('SELECT enabled')) return [[{ enabled: 1 }]];
+      if (config.sql.startsWith('SELECT event_id')) return [[{ event_id: eventId }]];
+      if (config.sql.startsWith('SELECT id FROM analytics_promotion_links')) return [[{ id: promotionId }]];
+      if (config.sql.startsWith('SELECT visit_id')) return [[{ visit_id: visitId, link_id: promotionId, visitor_id: owner, is_test: 1, entered_at: sqlDate(now), last_activity_at: sqlDate(activity) }]];
+      return [[]];
+    }) };
+    vi.mocked(analyticsPool).mockReturnValue({ getConnection: async () => c } as unknown as ReturnType<typeof analyticsPool>);
+    async function run(at: number, link = promotionId) {
+      calls.length = 0;
+      await ingestEvents(validateEvents([{ ...base(), at, promotionId: link, promotionVisitId: visitId }], at), identity, { device: 'desktop', browser: 'Chrome' });
+      return (calls.find(call => call.sql.includes('INSERT IGNORE INTO analytics_events'))!.values[0] as unknown[][])[0].slice(-2);
+    }
+    expect(await run(now)).toEqual([promotionId, visitId]);
+    owner = visitorHash(crypto.randomUUID(), true);
+    expect(await run(now)).toEqual(['', '']);
+    owner = visitorHash(visitor, true);
+    expect(await run(now, crypto.randomUUID())).toEqual(['', '']);
+    activity = now - 31 * 60_000;
+    expect(await run(now)).toEqual(['', '']);
+    activity = now;
+    expect(await run(now + 31 * 60_000)).toEqual(['', '']);
+  });
+
 });

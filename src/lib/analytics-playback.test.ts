@@ -1,8 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { attachPlaybackAnalytics, markAnalyticsSourceSwitch, PlaybackClock } from './analytics-playback';
-import { trackAnalytics } from './analytics-client';
+import { getPromotionAttribution, trackAnalytics } from './analytics-client';
 
-vi.mock('./analytics-client', () => ({ analyticsId: () => crypto.randomUUID(), getAnalyticsAttribution: () => ({}), trackAnalytics: vi.fn(), flushAnalytics: vi.fn() }));
+vi.mock('./analytics-client', () => ({ analyticsId: () => crypto.randomUUID(), getAnalyticsAttribution: () => ({}), getPromotionAttribution: vi.fn(() => ({ promotionId: '', promotionVisitId: '' })), trackAnalytics: vi.fn(), flushAnalytics: vi.fn() }));
 
 describe('playback cumulative clock', () => {
   it('counts wall time, separates hidden playback, excludes pause and seek', () => {
@@ -36,6 +36,15 @@ describe('playback lifecycle', () => {
     expect(trackAnalytics).toHaveBeenCalledTimes(1);
     tracker.dispose();
     expect(trackAnalytics).toHaveBeenCalledTimes(2);
+  });
+  it('freezes promotion attribution for the attempt across source changes', () => {
+    vi.mocked(getPromotionAttribution).mockReturnValue({ promotionId: 'A', promotionVisitId: 'visit-A' });
+    const tracker = attachPlaybackAnalytics(video(), meta);
+    vi.advanceTimersByTime(1);
+    vi.mocked(getPromotionAttribution).mockReturnValue({ promotionId: 'B', promotionVisitId: 'visit-B' });
+    vi.advanceTimersByTime(30_000);
+    expect(vi.mocked(trackAnalytics).mock.calls.every(([event]) => event.promotionId === 'A' && event.promotionVisitId === 'visit-A')).toBe(true);
+    tracker.dispose();
   });
   it('requires progressing playback for fallback first frame and preserves attempt on heartbeats', () => {
     const v = video(); const tracker = attachPlaybackAnalytics(v, meta);

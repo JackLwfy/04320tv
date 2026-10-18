@@ -17,6 +17,58 @@ let disabledUntil = 0;
 let timer: ReturnType<typeof setInterval> | undefined;
 export const analyticsId = () => crypto.randomUUID();
 
+const PROMOTION = '04320.analytics.promotion.v1';
+const PROMOTION_TTL = 30 * 60_000;
+const PROMOTION_UUID = /^[a-f0-9]{8}-[a-f0-9]{4}-[1-8][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i;
+type PromotionVisit = { promotionId: string; promotionVisitId: string; enteredAt: number; activityAt: number; page: string };
+let promotion: PromotionVisit | undefined;
+let promotionLoaded = false;
+let capturedRoute: string | undefined;
+let capturedPromotionId: string | undefined;
+function savePromotion() {
+  try { if (promotion) sessionStorage.setItem(PROMOTION, JSON.stringify(promotion)); else sessionStorage.removeItem(PROMOTION); } catch { /* In-memory attribution still works. */ }
+}
+function loadPromotion() {
+  if (promotionLoaded) return;
+  promotionLoaded = true;
+  try {
+    const value = JSON.parse(sessionStorage.getItem(PROMOTION) || 'null');
+    if (value && typeof value.promotionId === 'string' && PROMOTION_UUID.test(value.promotionId) && typeof value.promotionVisitId === 'string' && PROMOTION_UUID.test(value.promotionVisitId) && Number.isFinite(value.enteredAt) && Number.isFinite(value.activityAt) && value.enteredAt <= value.activityAt && value.activityAt <= Date.now() && typeof value.page === 'string' && ['/', '/watch', '/live', '/about'].includes(value.page)) promotion = value;
+  } catch { /* Ignore malformed storage. */ }
+}
+/** Capture before authentication; deliver only after analytics is enabled. */
+export function capturePromotionEntry(pathname: string, search: string, referrer = '') {
+  if (pathname.startsWith('/admin')) return;
+  loadPromotion();
+  const route = pathname + '?' + search;
+  if (capturedRoute === route) return;
+  const firstRoute = capturedRoute === undefined;
+  capturedRoute = route;
+  const now = Date.now();
+  const id = new URLSearchParams(search).get('promo')?.toLowerCase();
+  const previousId = capturedPromotionId;
+  capturedPromotionId = id;
+  let external = false;
+  try { external = !!referrer && new URL(referrer).origin !== location.origin; } catch { /* Direct visit. */ }
+  const navigation = firstRoute && typeof performance !== 'undefined' ? performance.getEntriesByType?.('navigation')[0] as PerformanceNavigationTiming | undefined : undefined;
+  if (promotion && now - promotion.activityAt > PROMOTION_TTL) { promotion = undefined; savePromotion(); }
+  // Full new navigations count even when the channel hides referrers; reload and retained SPA parameters do not.
+  if (id && PROMOTION_UUID.test(id) && (!firstRoute ? id !== previousId && id !== promotion?.promotionId : navigation?.type !== 'reload' && (!promotion || id !== promotion.promotionId || external || navigation?.type === 'navigate'))) {
+    promotion = { promotionId: id, promotionVisitId: analyticsId(), enteredAt: now, activityAt: now, page: pathname };
+    savePromotion();
+    if (allowed) sendPromotionEntry();
+  }
+}
+function sendPromotionEntry() {
+  if (promotion && Date.now() - promotion.activityAt <= PROMOTION_TTL) void trackAnalytics({ type: 'promotion_entry', id: promotion.promotionVisitId, at: promotion.enteredAt, page: promotion.page, promotionId: promotion.promotionId, promotionVisitId: promotion.promotionVisitId });
+}
+export function getPromotionAttribution(): Pick<AnalyticsEventInput, 'promotionId' | 'promotionVisitId'> {
+  loadPromotion();
+  if (promotion && Date.now() - promotion.activityAt > PROMOTION_TTL) { promotion = undefined; savePromotion(); }
+  // Empty fields also freeze an unattributed playback attempt.
+  return { promotionId: promotion?.promotionId || '', promotionVisitId: promotion?.promotionVisitId || '' };
+}
+
 function persist() {
   try { sessionStorage.setItem(KEY, JSON.stringify(queue)); } catch { /* Storage may be unavailable. */ }
 }
@@ -67,6 +119,7 @@ export function enableAnalytics(value: boolean) {
   allowed = value;
   if (value) {
     restore();
+    sendPromotionEntry();
     if (!timer) timer = setInterval(() => { void flushAnalytics(); }, 4000);
   } else if (timer) { clearInterval(timer); timer = undefined; }
 }
@@ -96,7 +149,10 @@ export async function trackAnalytics(event: AnalyticsEventInput, immediate = fal
   if (lastActivity && Date.now() - lastActivity > 30 * 60_000) { session = undefined; try { sessionStorage.removeItem(SESSION); } catch { /* Optional storage. */ } }
   lastActivity = Date.now();
   if (session?.sessionId) try { sessionStorage.setItem(SESSION, JSON.stringify({ id: session.sessionId, at: lastActivity })); } catch { /* Optional storage. */ }
-  const input = { ...event, id: event.id || analyticsId(), at: event.at || Date.now(), page: event.page || location.pathname };
+  const currentPromotion = getPromotionAttribution();
+  const frozen = event.promotionId !== undefined ? {} : currentPromotion;
+  if (promotion && event.type !== 'promotion_entry') { promotion.activityAt = Date.now(); savePromotion(); }
+  const input = { ...frozen, ...event, id: event.id || analyticsId(), at: event.at || Date.now(), page: event.page || location.pathname };
   let cleaned: AnalyticsEventInput;
   try { cleaned = await privateAnalyticsEvent(input); } catch { return; }
   if (!allowed) return;

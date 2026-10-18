@@ -1,7 +1,7 @@
 'use client';
 
 import type { AnalyticsEventInput, PlaybackStatus } from './analytics-types';
-import { analyticsId, getAnalyticsAttribution, trackAnalytics, flushAnalytics } from './analytics-client';
+import { analyticsId, getAnalyticsAttribution, getPromotionAttribution, trackAnalytics, flushAnalytics } from './analytics-client';
 
 export type PlaybackMetadata = Pick<AnalyticsEventInput, 'media' | 'sourceKey' | 'sourceName' | 'sourceOrigin' | 'vodId' | 'title' | 'episode'>;
 type Mode = 'idle' | 'playing' | 'buffer' | 'seek';
@@ -63,7 +63,7 @@ export function attachPlaybackAnalytics(video: HTMLVideoElement, metadata: Playb
   const attemptId = analyticsId();
   const previous = pendingSwitch && Date.now() - pendingSwitch.at < 60_000 && pendingSwitch.episode === metadata.episode && (!pendingSwitch.target || (pendingSwitch.target.sourceKey === metadata.sourceKey && pendingSwitch.target.vodId === metadata.vodId)) ? pendingSwitch : undefined;
   const watchId = previous?.watchId || analyticsId();
-  const base: AnalyticsEventInput = { type: 'playback', ...metadata, ...getAnalyticsAttribution(), attemptId, watchId, startedAt, previousAttemptId: previous?.previousAttemptId, switchReason: previous?.reason };
+  const base: AnalyticsEventInput = { type: 'playback', ...metadata, ...getAnalyticsAttribution(), ...getPromotionAttribution(), attemptId, watchId, startedAt, previousAttemptId: previous?.previousAttemptId, switchReason: previous?.reason };
   const snapshot = (immediate = false, errorCode?: string) => {
     if (!started) return;
     trackAnalytics({ ...base, ...clock.snapshot(), playbackStatus: status, firstFrameMs, firstFrameMethod, positionMs: Number.isFinite(video.currentTime) ? Math.round(video.currentTime * 1000) : 0, mediaDurationMs: Number.isFinite(video.duration) ? Math.round(video.duration * 1000) : undefined, errorCode: errorCode || lastError }, immediate);

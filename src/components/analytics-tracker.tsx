@@ -3,7 +3,7 @@
 import { useEffect, useRef } from 'react';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { useAuth } from './auth';
-import { enableAnalytics, flushAnalytics, trackAnalytics } from '@/lib/analytics-client';
+import { capturePromotionEntry, enableAnalytics, flushAnalytics, trackAnalytics } from '@/lib/analytics-client';
 
 export function AnalyticsTracker() {
   const { checked, verified } = useAuth();
@@ -11,6 +11,9 @@ export function AnalyticsTracker() {
   const search = useSearchParams();
   const route = pathname + '?' + search.toString();
   const last = useRef('');
+  useEffect(() => {
+    capturePromotionEntry(pathname, search.toString(), document.referrer);
+  }, [pathname, route, search]);
   useEffect(() => {
     enableAnalytics(checked && verified);
     if (!checked || !verified) return;

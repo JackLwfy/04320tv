@@ -21,7 +21,8 @@ BASE = Path('/root/04320-analytics')
 DATABASE = 'tv04320_analytics'
 TABLES = ('analytics_meta', 'analytics_receipts', 'analytics_events', 'analytics_search_sources',
           'analytics_playback', 'analytics_visitors', 'analytics_daily', 'analytics_rate_limits',
-          'analytics_jobs', 'analytics_ingest_daily')
+          'analytics_jobs', 'analytics_ingest_daily', 'analytics_promotion_links',
+          'analytics_promotion_visits')
 
 
 def guard():
@@ -101,6 +102,7 @@ def cleanup(db):
         ('analytics_events', 'occurred_at<%s', (cutoff,)),
         ('analytics_playback', 'started_at<%s', (cutoff,)),
         ('analytics_search_sources', 'occurred_at<%s', (cutoff,)),
+        ('analytics_promotion_visits', 'entered_at<%s', (cutoff,)),
         ('analytics_receipts', 'received_at<UTC_TIMESTAMP()-INTERVAL 2 DAY', ()),
         ('analytics_daily', 'day<%s', (today - dt.timedelta(days=399),)),
         ('analytics_visitors', 'last_seen<UTC_TIMESTAMP()-INTERVAL 400 DAY', ()),

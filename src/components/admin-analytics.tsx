@@ -4,11 +4,14 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import type { AnalyticsReport, AnalyticsTrend, AnalyticsView, MetricFormat } from '@/lib/analytics-types';
 import { analyticsDate, analyticsRange, formatMetric } from '@/lib/analytics-display';
 import { AdminGeography } from './admin-geography';
+import { AdminPromotions } from './admin-promotions';
 import s from './admin-analytics.module.css';
 
-const views: { id: AnalyticsView; label: string; description: string }[] = [
+type AdminView = AnalyticsView | 'promotions';
+const views: { id: AdminView; label: string; description: string }[] = [
   { id: 'overview', label: '统计概览', description: '从一次访问，到一段真正开始的故事。' },
   { id: 'traffic', label: '访问分析', description: '了解观众从哪里来，何时回到这里。' },
+  { id: 'promotions', label: '推广链接', description: '让每一次推广，都有清晰可见的回响。' },
   { id: 'search', label: '搜索需求', description: '每一个搜索词，都是一个等待回应的期待。' },
   { id: 'content', label: '内容热度', description: '看见被选择的故事，也看见持续观看的兴趣。' },
   { id: 'quality', label: '播放质量', description: '从搜索可达，到画面真正开始。' },
@@ -51,7 +54,7 @@ function Trend({ rows }: { rows: AnalyticsTrend[] }) {
 }
 
 export function AdminAnalytics() {
-  const [view, setView] = useState<AnalyticsView>('overview');
+  const [view, setView] = useState<AdminView>('overview');
   const [preset, setPreset] = useState('7');
   const [range, setRange] = useState(() => analyticsRange(7));
   const [media, setMedia] = useState('all');
@@ -76,6 +79,7 @@ export function AdminAnalytics() {
   const params = useMemo(() => new URLSearchParams({ view, ...range, media: hasMedia ? media : 'all', source: hasSource ? source : '', device: hasAudience ? device : 'all', browser: hasAudience ? browser : 'all', page: String(page), ...(view === 'traffic' ? { province } : {}) }).toString(), [view, range, hasMedia, media, hasSource, source, hasAudience, device, browser, page, province]);
 
   useEffect(() => {
+    if (view === 'promotions') { exportRequest.current?.abort(); return; }
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(new Error('请求超时，请重试。')), 30000);
     let active = true;
@@ -88,7 +92,7 @@ export function AdminAnalytics() {
       if (active) { setReport(data as AnalyticsReport); setSources(data.sources); }
     }).catch(reason => { if (active) setError(reason instanceof Error ? reason.message : '无法连接统计服务，请重试。'); }).finally(() => { clearTimeout(timeout); if (active) setLoading(false); });
     return () => { active = false; clearTimeout(timeout); controller.abort(); };
-  }, [params, refresh]);
+  }, [params, refresh, view]);
   useEffect(() => () => exportRequest.current?.abort(), []);
   useEffect(() => {
     if (!provinceScroll.current || loading || !report || view !== 'traffic' || (report.province || '') !== province) return;
@@ -123,6 +127,7 @@ export function AdminAnalytics() {
   return <div className={s.analytics}>
     <nav className={s.tabs} aria-label="统计视图">{views.map(item => <button key={item.id} aria-pressed={view === item.id} className={view === item.id ? s.activeTab : ''} onClick={() => { setView(item.id); setPage(1); setSource(''); setProvince(''); provinceScroll.current = false; }}>{item.label}</button>)}</nav>
     <div className={s.intro}><p>{views.find(item => item.id === view)?.description}</p><span>北京时间 · {view === 'overview' ? '概览最多 13 个月' : '明细最多 90 天'}</span></div>
+    {view === 'promotions' ? <AdminPromotions /> : <>
     <section className={s.filters} aria-label="统计筛选">
       <div className={s.filterRow}><div className={s.presets}>{[['1', '今日'], ['yesterday', '昨日'], ['7', '近 7 天'], ['30', '近 30 天'], ['custom', '自定义']].map(([id, label]) => <button key={id} aria-pressed={preset === id} onClick={() => { setPreset(id); setPage(1); if (id !== 'custom') setRange(analyticsRange(id === 'yesterday' ? 1 : Number(id), id === 'yesterday')); }}>{label}</button>)}</div><div className={s.actions}><button onClick={() => setRefresh(value => value + 1)} disabled={loading}>刷新</button><button className={s.export} onClick={download} disabled={loading || !report || exporting}>{exporting ? '正在导出…' : '导出本页 CSV ↗'}</button></div></div>
       <div className={s.filterRow}><div className={s.selects}><label>开始日期<input type="date" value={range.from} max={range.to || analyticsDate()} onChange={event => { setRange({ ...range, from: event.target.value }); setPreset('custom'); setPage(1); }} /></label><label>结束日期<input type="date" value={range.to} min={range.from} max={analyticsDate()} onChange={event => { setRange({ ...range, to: event.target.value }); setPreset('custom'); setPage(1); }} /></label>
@@ -147,5 +152,6 @@ export function AdminAnalytics() {
         <p className={s.footerNote}>匿名设备不等同于真实人数。客户端事件可能漏报；接口可达、实际起播与邮件送达分别统计。</p>
       </>}
     </div>
+    </>}
   </div>;
 }

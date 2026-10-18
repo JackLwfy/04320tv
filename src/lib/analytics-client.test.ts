@@ -50,4 +50,64 @@ describe('analytics delivery queue', () => {
     vi.stubGlobal('location', { pathname: '/admin' }); const fetch = vi.fn(); vi.stubGlobal('fetch', fetch);
     c.enableAnalytics(true); await c.trackAnalytics({ type: 'page_view' }); await c.flushAnalytics(); expect(fetch).not.toHaveBeenCalled(); c.enableAnalytics(false);
   });
+  it('captures before auth, retains refresh identity, switches A to B and expires inactivity', async () => {
+    vi.stubGlobal('location', { pathname: '/', origin: 'https://site.test' });
+    vi.stubGlobal('performance', { getEntriesByType: () => [{ type: 'navigate' }] });
+    let c = await import('./analytics-client');
+    const a = crypto.randomUUID(), b = crypto.randomUUID();
+    c.capturePromotionEntry('/', 'promo=' + a);
+    const first = c.getPromotionAttribution();
+    expect(first.promotionId).toBe(a);
+    expect(sessionStorage.getItem('04320.analytics.queue.v1')).toBeNull();
+    c.enableAnalytics(true);
+    await c.trackAnalytics({ type: 'page_view' });
+    const queue = JSON.parse(sessionStorage.getItem('04320.analytics.queue.v1')!);
+    expect(queue[0].event).toMatchObject({ type: 'promotion_entry', id: first.promotionVisitId });
+    expect(queue[1].event.promotionId).toBe(a);
+    c.enableAnalytics(false);
+    vi.resetModules(); c = await import('./analytics-client');
+    vi.stubGlobal('performance', { getEntriesByType: () => [{ type: 'reload' }] });
+    c.capturePromotionEntry('/', 'promo=' + a, 'https://outside.test/');
+    expect(c.getPromotionAttribution()).toEqual(first);
+    c.capturePromotionEntry('/watch', 'promo=' + a);
+    expect(c.getPromotionAttribution()).toEqual(first);
+    c.capturePromotionEntry('/', 'promo=' + b);
+    expect(c.getPromotionAttribution().promotionId).toBe(b);
+    vi.setSystemTime(Date.now() + 30 * 60_000 + 1);
+    c.capturePromotionEntry('/watch', 'promo=' + b);
+    expect(c.getPromotionAttribution().promotionId).toBe('');
+  });
+  it('does not revive expired attribution when an old frozen playback sends a snapshot', async () => {
+    vi.stubGlobal('location', { pathname: '/', origin: 'https://site.test' });
+    const c = await import('./analytics-client');
+    c.capturePromotionEntry('/', 'promo=' + crypto.randomUUID());
+    const frozen = c.getPromotionAttribution(); c.enableAnalytics(true);
+    vi.setSystemTime(Date.now() + 31 * 60_000);
+    await c.trackAnalytics({ type: 'playback', ...frozen });
+    await c.trackAnalytics({ type: 'page_view' });
+    const queue = JSON.parse(sessionStorage.getItem('04320.analytics.queue.v1')!);
+    expect(queue.at(-2).event.promotionId).toBe(frozen.promotionId);
+    expect(queue.at(-1).event.promotionId).toBe('');
+    c.enableAnalytics(false);
+  });
+  it('counts a new navigation to the same link even when the channel strips referrers', async () => {
+    vi.stubGlobal('location', { pathname: '/', origin: 'https://site.test' });
+    vi.stubGlobal('performance', { getEntriesByType: () => [{ type: 'navigate' }] });
+    let c = await import('./analytics-client'); const id = crypto.randomUUID();
+    c.capturePromotionEntry('/', 'promo=' + id);
+    const first = c.getPromotionAttribution();
+    vi.resetModules(); c = await import('./analytics-client');
+    c.capturePromotionEntry('/', 'promo=' + id);
+    expect(c.getPromotionAttribution().promotionId).toBe(id);
+    expect(c.getPromotionAttribution().promotionVisitId).not.toBe(first.promotionVisitId);
+  });
+  it('ignores corrupt storage and keeps attribution when storage throws', async () => {
+    vi.stubGlobal('location', { pathname: '/', origin: 'https://site.test' });
+    vi.stubGlobal('sessionStorage', { getItem: () => '{"promotionId":42}', setItem: () => { throw new Error('blocked'); }, removeItem: () => {} });
+    const c = await import('./analytics-client');
+    expect(c.getPromotionAttribution().promotionId).toBe('');
+    const id = crypto.randomUUID(); c.capturePromotionEntry('/', 'promo=' + id);
+    expect(c.getPromotionAttribution().promotionId).toBe(id);
+  });
+
 });
