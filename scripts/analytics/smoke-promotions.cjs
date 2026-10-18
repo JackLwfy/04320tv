@@ -14,7 +14,7 @@ const nonce = `${Date.now() + 3600000}.${crypto.randomBytes(16).toString('hex')}
 const mac = crypto.createHmac('sha256', `${values.ADMIN_SESSION_SECRET}:${values.ADMIN_PASSWORD_HASH}`).update(nonce).digest('hex');
 const cookie = `tv_admin_session=${nonce}.${mac}`;
 const activity = '__QA_PROMOTIONS_' + crypto.randomUUID();
-const links = []; const identities = [];
+const links = []; const codes = []; const identities = [];
 async function request(route, body, method = 'GET', admin = true) {
   return fetch(origin + route, { method, headers: { ...(admin ? { Cookie: cookie } : {}), ...(body ? { Origin: origin, 'Content-Type': 'application/json' } : {}) }, ...(body ? { body: JSON.stringify(body) } : {}), signal: AbortSignal.timeout(30000) });
 }
@@ -30,7 +30,9 @@ async function main() {
   for (const name of ['A', 'B']) {
     const created = await json(await request(endpoint, { name: activity + name, channel: '隔离验收', activity, placement: name, landingPath: '/?utm_source=qa#part' }, 'POST'), 201);
     links.push(created.link.id);
-    assert.equal(new URL(created.link.url).searchParams.get('promo'), created.link.id);
+    const code = new URL(created.link.url).searchParams.get('promo');
+    assert.match(code, /^[A-Za-z0-9_-]{8}$/);
+    codes.push(code);
     assert.equal(new URL(created.link.url).searchParams.get('utm_source'), 'qa');
     assert.equal(new URL(created.link.url).hash, '#part');
   }
@@ -39,7 +41,7 @@ async function main() {
   const identity = JSON.parse(Buffer.from(auth.token.split('.')[0], 'base64url').toString());
   assert.equal(identity.test, true); identities.push(identity);
   const visit = crypto.randomUUID(); const now = Date.now(); const entered = now - 90000;
-  const event = (type, extra = {}) => ({ id: crypto.randomUUID(), type, at: now, promotionId: links[0], promotionVisitId: visit, ...extra });
+  const event = (type, extra = {}) => ({ id: crypto.randomUUID(), type, at: now, promotionId: codes[0], promotionVisitId: visit, ...extra });
   const events = [event('promotion_entry', { id: visit, at: entered }), event('page_view'), event('search', { searchId: crypto.randomUUID(), query: activity, searchStatus: 'empty' }), event('newsletter_accepted'), event('playback', { attemptId: crypto.randomUUID(), watchId: crypto.randomUUID(), startedAt: entered + 1, media: 'vod', sourceKey: 'qa-promotion', title: activity, vodId: 'qa', sequence: 1, playbackStatus: 'playing', playedMs: 70000, hiddenPlayedMs: 5000, firstFrameMs: 200, firstFrameMethod: 'frame' })];
   assert.deepEqual(await json(await request('/api/analytics/collect', { token: auth.token, events }, 'POST')), { accepted: 5, duplicates: 0 });
   assert.deepEqual(await json(await request('/api/analytics/collect', { token: auth.token, events }, 'POST')), { accepted: 0, duplicates: 5 });
@@ -64,6 +66,12 @@ async function main() {
   assert.equal((await json(await request(endpoint + filter + '&device=mobile'))).summary.arrivals, 0);
   assert.equal((await json(await request(endpoint + filter + '&page=2'))).links.length, 0);
   if (origin.startsWith('https:')) assert.equal((await json(await request(endpoint + `?activity=${activity}&archived=all`))).summary.arrivals, 0, 'Test facts must not enter production reports');
+  const legacyVisit = crypto.randomUUID();
+  const legacy = [event('promotion_entry', { id: legacyVisit, promotionId: links[1], promotionVisitId: legacyVisit }), event('page_view', { promotionId: links[1], promotionVisitId: legacyVisit })];
+  assert.equal((await json(await request('/api/analytics/collect', { token: auth.token, events: legacy }, 'POST'))).accepted, 2);
+  const compatible = await json(await request(endpoint + filter));
+  assert.equal(compatible.summary.arrivals, 2, 'Short codes and legacy UUIDs both attribute visits');
+  assert.equal(compatible.summary.visitors, 1, 'Legacy and short links retain the same device identity');
   await json(await request(endpoint, { id: links[0], archived: true, notes: 'isolated acceptance' }, 'PATCH'));
   assert.equal((await json(await request(endpoint + filter + '&id=' + links[0]))).detail.link.archived, true);
   console.log('PROMOTION_ACCEPTANCE_OK', origin, 'auth/origin/create/immutable/attribution/dedupe/foreground/cohort/zero-traffic/filter/page/detail/CSV/archive');

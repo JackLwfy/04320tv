@@ -21,6 +21,11 @@ function uuid(value: unknown, required = false): string | undefined {
   if (typeof value !== 'string' || !UUID.test(value)) throw new Error('统计标识无效。');
   return value.toLowerCase();
 }
+function promotionId(value: unknown): string | undefined {
+  if (!value) return undefined;
+  if (typeof value === 'string' && /^[A-Za-z0-9_-]{8}$/.test(value)) return value;
+  return uuid(value);
+}
 function choice<T extends string>(value: unknown, options: readonly T[], fallback?: T): T | undefined {
   if (value === undefined || value === '') return fallback;
   if (typeof value !== 'string' || !options.includes(value as T)) throw new Error('统计选项无效。');
@@ -53,7 +58,7 @@ export function validateEvents(input: unknown, now = Date.now()): ValidEvent[] {
     if (at < now - DAY_MS) throw new Error('统计事件已过期。');
     const event: ValidEvent = {
       type, id: uuid(raw.id, true)!, at: Math.min(at, now),
-      promotionId: raw.promotionId ? uuid(raw.promotionId) : undefined, promotionVisitId: raw.promotionVisitId ? uuid(raw.promotionVisitId) : undefined,
+      promotionId: promotionId(raw.promotionId), promotionVisitId: raw.promotionVisitId ? uuid(raw.promotionVisitId) : undefined,
       media: choice(raw.media, ['vod', 'live']),
       sourceKey: sourceHash(raw.sourceKey), sourceName: privateText(raw.sourceName, 96),
       sourceOrigin: choice(raw.sourceOrigin, ['site', 'custom'], 'custom'),

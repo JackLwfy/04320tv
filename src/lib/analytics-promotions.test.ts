@@ -1,10 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { parsePromotionCreate, parsePromotionFilter, parsePromotionUpdate, promotionCohort, promotionLandingPath, promotionReport, promotionsCsv } from './analytics-promotions';
+import { createPromotion, parsePromotionCreate, parsePromotionFilter, parsePromotionUpdate, promotionCohort, promotionLandingPath, promotionReport, promotionsCsv } from './analytics-promotions';
 import { businessDay, DAY_MS } from './analytics-validation';
 
-const { query, release } = vi.hoisted(() => ({ query: vi.fn(), release: vi.fn() }));
-vi.mock('./analytics-db', () => ({ analyticsPool: () => ({ getConnection: async () => ({ query, release, beginTransaction: vi.fn(), commit: vi.fn(), rollback: vi.fn() }) }) }));
-beforeEach(() => { vi.stubEnv('ADMIN_ORIGIN', 'https://04320.example'); query.mockReset(); release.mockClear(); });
+const { query, execute, release } = vi.hoisted(() => ({ query: vi.fn(), execute: vi.fn(), release: vi.fn() }));
+vi.mock('./analytics-db', () => ({ analyticsPool: () => ({ getConnection: async () => ({ query, execute, release, beginTransaction: vi.fn(), commit: vi.fn(), rollback: vi.fn() }) }) }));
+beforeEach(() => { vi.stubEnv('ADMIN_ORIGIN', 'https://04320.example'); query.mockReset(); execute.mockReset(); release.mockClear(); });
 afterEach(() => vi.unstubAllEnvs());
 const id = '154429b1-f3ab-4a60-b364-d55c580993c0';
 
@@ -63,4 +63,35 @@ it('does not turn database failure into an empty report', async () => {
   query.mockRejectedValue(new Error('db unavailable'));
   await expect(promotionReport(parsePromotionFilter(new URL('https://local')))).rejects.toThrow('db unavailable');
   expect(release).toHaveBeenCalledOnce();
+});
+
+it('generates an eight-character case-sensitive URL code and retries a unique collision', async () => {
+  const collision = Object.assign(new Error('Duplicate code'), { code: 'ER_DUP_ENTRY' });
+  execute.mockRejectedValueOnce(collision).mockResolvedValueOnce([{}]);
+  query.mockImplementation(async () => [[{ id, short_code: execute.mock.calls[1][1][1], landing_path: '/watch?id=12#ep', archived: 0 }]]);
+  const result = await createPromotion({ name: '推广', channel: '微信', landingPath: '/watch?id=12#ep' });
+  expect(execute).toHaveBeenCalledTimes(2);
+  for (const [, values] of execute.mock.calls) expect(values[1]).toMatch(/^[A-Za-z0-9_-]{8}$/);
+  expect(execute.mock.calls[0][1][1]).not.toBe(execute.mock.calls[1][1][1]);
+  expect(result.id).toBe(id);
+  expect(result.code).toHaveLength(8);
+  expect(result.url).toBe(`https://04320.example/watch?id=12&promo=${result.code}#ep`);
+  expect(release).toHaveBeenCalledOnce();
+});
+
+it('preserves uppercase codes when serializing links', async () => {
+  execute.mockResolvedValue([{}]);
+  query.mockResolvedValue([[{ id, short_code: 'aB1_-xZ9', landing_path: '/', archived: 0 }]]);
+  expect((await createPromotion({ name: '推广', channel: '微信', landingPath: '/' })).url).toBe('https://04320.example/?promo=aB1_-xZ9');
+});
+
+it('stops code collision retries after three attempts and surfaces other database errors immediately', async () => {
+  const collision = Object.assign(new Error('Duplicate code'), { code: 'ER_DUP_ENTRY' });
+  execute.mockRejectedValue(collision);
+  await expect(createPromotion({ name: '推广', channel: '微信', landingPath: '/' })).rejects.toBe(collision);
+  expect(execute).toHaveBeenCalledTimes(3);
+  expect(query).not.toHaveBeenCalled();
+  execute.mockReset().mockRejectedValue(new Error('Database unavailable'));
+  await expect(createPromotion({ name: '推广', channel: '微信', landingPath: '/' })).rejects.toThrow('Database unavailable');
+  expect(execute).toHaveBeenCalledOnce();
 });

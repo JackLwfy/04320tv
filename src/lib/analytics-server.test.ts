@@ -81,6 +81,12 @@ describe('analytics input and browser compatibility', () => {
     expect(JSON.stringify(accepted)).not.toContain('a@example.test');
     expect(privateText('test\nuser@example.test https://a.test/?password=x', 200)).toBe('test [邮箱] [链接]');
   });
+  it('preserves short-code case, accepts legacy UUIDs and rejects malformed promotion parameters', () => {
+    expect(validateEvents([{ ...base(), promotionId: 'AbC_-123', promotionVisitId: searchId }], now)[0].promotionId).toBe('AbC_-123');
+    expect(validateEvents([{ ...base(), promotionId: visitor.toUpperCase(), promotionVisitId: searchId }], now)[0].promotionId).toBe(visitor);
+    expect(() => validateEvents([{ ...base(), promotionId: 'short' }], now)).toThrow();
+    expect(() => validateEvents([{ ...base(), promotionId: 'AbC_-123', promotionVisitId: 'AbC_-123' }], now)).toThrow();
+  });
   it('requires search identity, status and unique per-source results', () => {
     const outcome = { sourceKey: 'site-a', sourceName: 'A', status: 'empty', durationMs: 5, resultCount: 0 };
     const search = { ...base(), type: 'search', searchId, searchStatus: 'empty', outcomes: [outcome] };
@@ -179,17 +185,20 @@ describe('analytics ingest transaction', () => {
       calls.push({ sql: config.sql, values });
       if (config.sql.startsWith('SELECT enabled')) return [[{ enabled: 1 }]];
       if (config.sql.startsWith('SELECT event_id')) return [[{ event_id: eventId }]];
-      if (config.sql.startsWith('SELECT id FROM analytics_promotion_links')) return [[{ id: promotionId }]];
+      if (config.sql.startsWith('SELECT id,short_code FROM analytics_promotion_links')) return [[{ id: promotionId, short_code: 'AbC_-123' }]];
       if (config.sql.startsWith('SELECT visit_id')) return [[{ visit_id: visitId, link_id: promotionId, visitor_id: owner, is_test: 1, entered_at: sqlDate(now), last_activity_at: sqlDate(activity) }]];
       return [[]];
     }) };
     vi.mocked(analyticsPool).mockReturnValue({ getConnection: async () => c } as unknown as ReturnType<typeof analyticsPool>);
-    async function run(at: number, link = promotionId) {
+    async function run(at: number, link: string = promotionId) {
       calls.length = 0;
       await ingestEvents(validateEvents([{ ...base(), at, promotionId: link, promotionVisitId: visitId }], at), identity, { device: 'desktop', browser: 'Chrome' });
       return (calls.find(call => call.sql.includes('INSERT IGNORE INTO analytics_events'))!.values[0] as unknown[][])[0].slice(-2);
     }
     expect(await run(now)).toEqual([promotionId, visitId]);
+    expect(await run(now, 'AbC_-123')).toEqual([promotionId, visitId]);
+    expect(await run(now, 'abc_-123')).toEqual(['', '']);
+    expect(await run(now, 'Unknown1')).toEqual(['', '']);
     owner = visitorHash(crypto.randomUUID(), true);
     expect(await run(now)).toEqual(['', '']);
     owner = visitorHash(visitor, true);

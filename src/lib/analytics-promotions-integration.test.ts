@@ -27,11 +27,12 @@ test.skipIf(!enabled)('promotion TLS database: cohort, visit retry, owner, cross
   const b = await createPromotion({ name: 'QA-B', channel: activity, activity, landingPath: '/about' }); links.push(b.id);
   const zero = await createPromotion({ name: 'QA-ZERO', channel: activity, activity, landingPath: '/' }); links.push(zero.id);
   expect(new URL(a.url).searchParams.get('q')).toBe('existing');
-  expect(new URL(a.url).searchParams.get('promo')).toBe(a.id);
+  const codeA = new URL(a.url).searchParams.get('promo')!;
+  expect(codeA).toMatch(/^[A-Za-z0-9_-]{8}$/);
   const now = Date.now(); const entered = now - 120000;
   const visitA = crypto.randomUUID(); const visitB = crypto.randomUUID(); const attempt = crypto.randomUUID();
   const dimensions = { device: 'desktop', browser: 'Chrome' };
-  const raw = (type: string, extra: Record<string, unknown> = {}) => ({ id: crypto.randomUUID(), type, at: entered, promotionId: a.id, promotionVisitId: visitA, ...extra });
+  const raw = (type: string, extra: Record<string, unknown> = {}) => ({ id: crypto.randomUUID(), type, at: entered, promotionId: codeA, promotionVisitId: visitA, ...extra });
   const entry = raw('promotion_entry', { id: visitA });
   const play = raw('playback', { at: now, startedAt: entered + 1000, attemptId: attempt, watchId: crypto.randomUUID(), sequence: 1, media: 'vod', sourceKey: 'qa-promotion', vodId: 'qa', title: 'QA', playbackStatus: 'playing', playedMs: 80000, hiddenPlayedMs: 20000, firstFrameMs: 100, firstFrameMethod: 'frame' });
   const send = (events: unknown[], owner = identities[0]) => ingestEvents(validateEvents(events, now), owner, dimensions, { ip: '192.0.2.120', country: 'CN', province: '44', city: 'QA' });

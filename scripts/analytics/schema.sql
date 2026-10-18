@@ -7,10 +7,11 @@ CREATE TABLE IF NOT EXISTS analytics_meta (
   enabled TINYINT UNSIGNED NOT NULL DEFAULT 1,
   created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-INSERT IGNORE INTO analytics_meta (id, schema_version) VALUES (1, 4);
+INSERT IGNORE INTO analytics_meta (id, schema_version) VALUES (1, 5);
 
 CREATE TABLE IF NOT EXISTS analytics_promotion_links (
   id CHAR(36) CHARACTER SET ascii PRIMARY KEY,
+  short_code CHAR(8) CHARACTER SET ascii COLLATE ascii_bin NULL,
   name VARCHAR(120) NOT NULL,
   channel VARCHAR(80) NOT NULL,
   activity VARCHAR(120) NOT NULL DEFAULT '',
@@ -21,6 +22,7 @@ CREATE TABLE IF NOT EXISTS analytics_promotion_links (
   archived TINYINT UNSIGNED NOT NULL DEFAULT 0,
   created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
   updated_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  UNIQUE KEY promotion_short_code (short_code),
   INDEX promotion_channel (channel),
   INDEX promotion_activity (activity),
   INDEX promotion_archive (archived,created_at)

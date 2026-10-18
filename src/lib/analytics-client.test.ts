@@ -101,6 +101,20 @@ describe('analytics delivery queue', () => {
     expect(c.getPromotionAttribution().promotionId).toBe(id);
     expect(c.getPromotionAttribution().promotionVisitId).not.toBe(first.promotionVisitId);
   });
+  it('preserves mixed-case short codes across refresh and treats different case as a different link', async () => {
+    vi.stubGlobal('location', { pathname: '/', origin: 'https://site.test' });
+    let c = await import('./analytics-client');
+    c.capturePromotionEntry('/', 'promo=AbC_-123');
+    const original = c.getPromotionAttribution();
+    expect(original.promotionId).toBe('AbC_-123');
+    vi.resetModules(); c = await import('./analytics-client');
+    vi.stubGlobal('performance', { getEntriesByType: () => [{ type: 'reload' }] });
+    c.capturePromotionEntry('/', 'promo=AbC_-123');
+    expect(c.getPromotionAttribution()).toEqual(original);
+    c.capturePromotionEntry('/watch', 'promo=abc_-123');
+    expect(c.getPromotionAttribution().promotionId).toBe('abc_-123');
+    expect(c.getPromotionAttribution().promotionVisitId).not.toBe(original.promotionVisitId);
+  });
   it('ignores corrupt storage and keeps attribution when storage throws', async () => {
     vi.stubGlobal('location', { pathname: '/', origin: 'https://site.test' });
     vi.stubGlobal('sessionStorage', { getItem: () => '{"promotionId":42}', setItem: () => { throw new Error('blocked'); }, removeItem: () => {} });

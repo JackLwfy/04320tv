@@ -20,6 +20,7 @@ export const analyticsId = () => crypto.randomUUID();
 const PROMOTION = '04320.analytics.promotion.v1';
 const PROMOTION_TTL = 30 * 60_000;
 const PROMOTION_UUID = /^[a-f0-9]{8}-[a-f0-9]{4}-[1-8][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i;
+const PROMOTION_CODE = /^[A-Za-z0-9_-]{8}$/;
 type PromotionVisit = { promotionId: string; promotionVisitId: string; enteredAt: number; activityAt: number; page: string };
 let promotion: PromotionVisit | undefined;
 let promotionLoaded = false;
@@ -33,7 +34,7 @@ function loadPromotion() {
   promotionLoaded = true;
   try {
     const value = JSON.parse(sessionStorage.getItem(PROMOTION) || 'null');
-    if (value && typeof value.promotionId === 'string' && PROMOTION_UUID.test(value.promotionId) && typeof value.promotionVisitId === 'string' && PROMOTION_UUID.test(value.promotionVisitId) && Number.isFinite(value.enteredAt) && Number.isFinite(value.activityAt) && value.enteredAt <= value.activityAt && value.activityAt <= Date.now() && typeof value.page === 'string' && ['/', '/watch', '/live', '/about'].includes(value.page)) promotion = value;
+    if (value && typeof value.promotionId === 'string' && (PROMOTION_UUID.test(value.promotionId) || PROMOTION_CODE.test(value.promotionId)) && typeof value.promotionVisitId === 'string' && PROMOTION_UUID.test(value.promotionVisitId) && Number.isFinite(value.enteredAt) && Number.isFinite(value.activityAt) && value.enteredAt <= value.activityAt && value.activityAt <= Date.now() && typeof value.page === 'string' && ['/', '/watch', '/live', '/about'].includes(value.page)) promotion = value;
   } catch { /* Ignore malformed storage. */ }
 }
 /** Capture before authentication; deliver only after analytics is enabled. */
@@ -45,7 +46,8 @@ export function capturePromotionEntry(pathname: string, search: string, referrer
   const firstRoute = capturedRoute === undefined;
   capturedRoute = route;
   const now = Date.now();
-  const id = new URLSearchParams(search).get('promo')?.toLowerCase();
+  const parameter = new URLSearchParams(search).get('promo') || '';
+  const id = PROMOTION_UUID.test(parameter) ? parameter.toLowerCase() : parameter;
   const previousId = capturedPromotionId;
   capturedPromotionId = id;
   let external = false;
@@ -53,7 +55,7 @@ export function capturePromotionEntry(pathname: string, search: string, referrer
   const navigation = firstRoute && typeof performance !== 'undefined' ? performance.getEntriesByType?.('navigation')[0] as PerformanceNavigationTiming | undefined : undefined;
   if (promotion && now - promotion.activityAt > PROMOTION_TTL) { promotion = undefined; savePromotion(); }
   // Full new navigations count even when the channel hides referrers; reload and retained SPA parameters do not.
-  if (id && PROMOTION_UUID.test(id) && (!firstRoute ? id !== previousId && id !== promotion?.promotionId : navigation?.type !== 'reload' && (!promotion || id !== promotion.promotionId || external || navigation?.type === 'navigate'))) {
+  if (id && (PROMOTION_UUID.test(id) || PROMOTION_CODE.test(id)) && (!firstRoute ? id !== previousId && id !== promotion?.promotionId : navigation?.type !== 'reload' && (!promotion || id !== promotion.promotionId || external || navigation?.type === 'navigate'))) {
     promotion = { promotionId: id, promotionVisitId: analyticsId(), enteredAt: now, activityAt: now, page: pathname };
     savePromotion();
     if (allowed) sendPromotionEntry();

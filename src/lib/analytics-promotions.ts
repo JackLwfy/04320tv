@@ -5,7 +5,7 @@ import { parseReportFilter, percent, type ReportFilter } from './analytics-repor
 import { businessDay, DAY_MS, sqlDate } from './analytics-validation';
 import { PROVINCES } from './analytics-geography';
 
-export interface PromotionLink { id: string; name: string; channel: string; activity: string; placement: string; creative: string; notes: string; landingPath: string; archived: boolean; createdAt: string; updatedAt: string; url: string }
+export interface PromotionLink { id: string; code?: string; name: string; channel: string; activity: string; placement: string; creative: string; notes: string; landingPath: string; archived: boolean; createdAt: string; updatedAt: string; url: string }
 export interface PromotionMetrics { arrivals: number; visitors: number; views: number; newVisitors: number; searchDevices: number; playingDevices: number; playRate: number | null; watchMs: number; newsletterDevices: number; effectiveDevices: number; effectiveRate: number | null; newsletterRate: number | null }
 export interface PromotionFilter extends ReportFilter { channel: string; activity: string; archived: string; id: string; sort: string; q: string }
 export const PROMOTION_PAGE_SIZE = 20;
@@ -54,8 +54,9 @@ export function parsePromotionFilter(url: URL, now = Date.now()): PromotionFilte
   return { ...f, channel: string(p.get('channel') || '', '渠道', 80), activity: string(p.get('activity') || '', '活动', 120), q: string(p.get('q') || '', '搜索内容', 120), archived, id, sort };
 }
 function link(row: RowDataPacket): PromotionLink {
-  const url = new URL(String(row.landing_path), promotionOrigin()); url.searchParams.set('promo', String(row.id));
-  return { id: row.id, name: row.name, channel: row.channel, activity: row.activity, placement: row.placement, creative: row.creative, notes: row.notes, landingPath: row.landing_path, archived: !!row.archived, createdAt: String(row.created_at), updatedAt: String(row.updated_at), url: url.href };
+  const code = row.short_code ? String(row.short_code) : undefined;
+  const url = new URL(String(row.landing_path), promotionOrigin()); url.searchParams.set('promo', code || String(row.id));
+  return { id: row.id, ...(code ? { code } : {}), name: row.name, channel: row.channel, activity: row.activity, placement: row.placement, creative: row.creative, notes: row.notes, landingPath: row.landing_path, archived: !!row.archived, createdAt: String(row.created_at), updatedAt: String(row.updated_at), url: url.href };
 }
 async function rows(c: PoolConnection, sql: string, values: unknown[] = []) {
   const [data] = await c.query<RowDataPacket[]>({ sql: `SET STATEMENT max_statement_time=8 FOR ${sql}`, timeout: 9500 }, values); return data;
@@ -63,7 +64,14 @@ async function rows(c: PoolConnection, sql: string, values: unknown[] = []) {
 export async function createPromotion(value: unknown) {
   const body = parsePromotionCreate(value); const id = crypto.randomUUID(); const c = await analyticsPool().getConnection();
   try {
-    await c.execute('INSERT INTO analytics_promotion_links (id,name,channel,activity,placement,creative,notes,landing_path) VALUES (?,?,?,?,?,?,?,?)', [id, body.name, body.channel, body.activity, body.placement, body.creative, body.notes, body.landingPath]);
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        await c.execute('INSERT INTO analytics_promotion_links (id,short_code,name,channel,activity,placement,creative,notes,landing_path) VALUES (?,?,?,?,?,?,?,?,?)', [id, crypto.randomBytes(6).toString('base64url'), body.name, body.channel, body.activity, body.placement, body.creative, body.notes, body.landingPath]);
+        break;
+      } catch (error) {
+        if (attempt === 2 || !error || typeof error !== 'object' || !('code' in error) || error.code !== 'ER_DUP_ENTRY') throw error;
+      }
+    }
     return link((await rows(c, 'SELECT * FROM analytics_promotion_links WHERE id=?', [id]))[0]);
   } finally { c.release(); }
 }

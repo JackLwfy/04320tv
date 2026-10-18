@@ -40,7 +40,10 @@ export async function ingestEvents(events: ValidEvent[], identity: AnalyticsIden
     const accepted = items.filter(e => ids.has(e.id) && !used.has(e.id) && !!used.add(e.id));
     const promotionIds = [...new Set(accepted.map(e => e.promotionId).filter(Boolean))];
     if (promotionIds.length) {
-      const [links] = await query(connection, 'SELECT id FROM analytics_promotion_links WHERE id IN (?)', [promotionIds]);
+      const [links] = await query(connection, 'SELECT id,short_code FROM analytics_promotion_links WHERE id IN (?) OR short_code IN (?)', [promotionIds, promotionIds]);
+      const resolved = new Map<string, string>();
+      for (const link of links) { resolved.set(link.id, link.id); if (link.short_code) resolved.set(link.short_code, link.id); }
+      for (const e of accepted) e.promotionId = resolved.get(e.promotionId || '');
       const known = new Set(links.map(row => row.id));
       // Entry retries keep the original identity and entry time; no request can take over a visit.
       for (const e of accepted.filter(e => e.type === 'promotion_entry' && known.has(e.promotionId))) {
