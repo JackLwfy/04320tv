@@ -9,6 +9,7 @@ const privateDir = path.resolve(__dirname, '../../../.04320-analytics-private');
 const origin = process.argv[2] || 'https://04320.com';
 if (!['https://04320.com', 'http://localhost:8080'].includes(origin)) throw new Error('Unexpected acceptance target');
 const credentials = JSON.parse(fs.readFileSync(path.join(privateDir, 'connection.json'), 'utf8'));
+const connect = () => mysql.createConnection({ host: 'mail.fafamail.com', stream: net.createConnection({ host: credentials.host, port: credentials.port }), user: credentials.user, password: credentials.password, database: credentials.database, ssl: { ca: credentials.ca, rejectUnauthorized: true, verifyIdentity: true } });
 const values = Object.fromEntries(JSON.parse(fs.readFileSync(path.join(privateDir, 'edgeone-env-before.json'), 'utf8')).map(e => [e.Key, e.Value]));
 const value = `${Date.now() + 3600000}.${crypto.randomBytes(16).toString('hex')}`;
 const signature = crypto.createHmac('sha256', `${values.ADMIN_SESSION_SECRET}:${values.ADMIN_PASSWORD_HASH}`).update(value).digest('hex');
@@ -40,6 +41,14 @@ async function main() {
   if (origin.startsWith('https:')) assert.equal((await request('/api/analytics/ingest', { token: session.token, events })).status, 403, 'Unsigned calls cannot bypass the native edge collector');
   assert.equal((await request('/api/analytics/collect', { token: 'invalid', events })).status, 401);
   assert.equal((await request('/api/analytics/collect', { token: session.token, events: [{ ...events[0], type: 'invalid' }] })).status, 400);
+  let expectedIp;
+  const connection = await connect();
+  try {
+    const visitor = crypto.createHmac('sha256', credentials.ingestSecret).update(`test-visitor:${identity.visitor}`).digest('hex');
+    const [stored] = await connection.query('SELECT network_ip FROM analytics_events WHERE event_id=? AND visitor_id=? AND is_test=1', [events[0].id, visitor]);
+    assert.ok(stored[0]?.network_ip, 'The current test event must retain its server-collected IP');
+    expectedIp = stored[0].network_ip;
+  } finally { await connection.end(); }
   for (const view of ['overview', 'traffic', 'search', 'content', 'quality', 'newsletter', 'health']) {
     const started = Date.now();
     const reportResponse = await request(`/api/admin/analytics?test=1&view=${view}`);
@@ -48,11 +57,11 @@ async function main() {
     assert.equal(report.view, view); assert.ok(report.cards.length);
     if (view === 'traffic') {
       assert.equal(report.geography.provinces.length, 34);
-      const ip = report.tables.find(t => t.key === 'ips').rows.find(row => row.network_ip);
+      const ip = report.tables.find(t => t.key === 'ips').rows.find(row => row.network_ip === expectedIp);
       assert.ok(ip, 'Server-collected IP must be reported');
       const beijingTime = new Date(now + 8 * 3600000).toISOString().replace('T', ' ').replace('Z', '');
-      assert.equal(ip.first_seen, beijingTime, 'IP first visit uses Beijing time');
-      assert.equal(ip.last_seen, beijingTime, 'IP last visit uses Beijing time');
+      // IP rows aggregate all visits sharing an exit, including earlier isolated checks.
+      assert.ok(ip.first_seen <= beijingTime && ip.last_seen >= beijingTime, 'Current Beijing-time visit lies within the aggregated IP interval');
       assert.ok(report.tables.find(t => t.key === 'ips').columns.some(c => c.label === '首次访问（北京时间）'));
       if (origin.startsWith('https:')) {
         assert.notEqual(ip.network_ip, '203.0.113.6', 'Caller cannot override edge IP');
@@ -76,7 +85,7 @@ async function main() {
         const selectedCsv = await request(`/api/admin/analytics?test=1&view=traffic&province=${province.code}&format=csv`);
         const csv = await selectedCsv.text();
         assert.ok(csv.includes(`明细省份:${province.code}`));
-        assert.ok(csv.includes('首次访问（北京时间）') && csv.includes(beijingTime));
+        assert.ok(csv.includes('首次访问（北京时间）') && csv.includes(ip.first_seen) && csv.includes(ip.last_seen));
         console.log('PROVINCE_DRILL_OK', province.name, 'IP/city/operator/CSV');
       }
     }
@@ -111,7 +120,7 @@ async function main() {
 }
 async function cleanup() {
   if (!identity) return;
-  const c = await mysql.createConnection({ host: 'mail.fafamail.com', stream: net.createConnection({ host: credentials.host, port: credentials.port }), user: credentials.user, password: credentials.password, database: credentials.database, ssl: { ca: credentials.ca, rejectUnauthorized: true, verifyIdentity: true } });
+  const c = await connect();
   try {
     const visitor = crypto.createHmac('sha256', credentials.ingestSecret).update(`test-visitor:${identity.visitor}`).digest('hex');
     for (const table of ['analytics_events', 'analytics_playback', 'analytics_visitors', 'analytics_receipts']) await c.query(`DELETE FROM ${table} WHERE is_test=1 AND visitor_id=?`, [visitor]);
