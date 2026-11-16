@@ -22,7 +22,7 @@ DATABASE = 'tv04320_analytics'
 TABLES = ('analytics_meta', 'analytics_receipts', 'analytics_events', 'analytics_search_sources',
           'analytics_playback', 'analytics_visitors', 'analytics_daily', 'analytics_rate_limits',
           'analytics_jobs', 'analytics_ingest_daily', 'analytics_promotion_links',
-          'analytics_promotion_visits')
+          'analytics_promotion_visits', 'newsletter_images')
 
 
 def guard():

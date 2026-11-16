@@ -22,7 +22,17 @@ async function main() {
   const { Projects } = await api('DescribePagesProjects', { ProjectIds: [projectId] });
   if (Projects[0]?.RepoUrl !== 'https://github.com/JackLwfy/04320tv' || Projects[0]?.RepoBranch !== 'main') throw new Error('Project identity mismatch');
   const mode = process.argv[2];
-  if (mode === 'configure') {
+  if (mode === 'image-configure') {
+    const previous = await env();
+    fs.mkdirSync(privateDir, { recursive: true });
+    const backup = path.join(privateDir, 'edgeone-env-before-newsletter-images.json');
+    if (!fs.existsSync(backup)) fs.writeFileSync(backup, JSON.stringify(previous.entries), { mode: 0o600 });
+    const Value = previous.values.NEWSLETTER_IMAGE_SECRET || crypto.randomBytes(32).toString('hex');
+    await api('ModifyPagesProjectEnvs', { ProjectId: projectId, EnvVars: [{ ...previous.entries.find(e => e.Key === 'NEWSLETTER_IMAGE_SECRET'), Key: 'NEWSLETTER_IMAGE_SECRET', Value }] });
+    if ((await env()).values.NEWSLETTER_IMAGE_SECRET !== Value) throw new Error('Image secret verification failed');
+    fs.writeFileSync(path.join(privateDir, 'newsletter-image-config.json'), JSON.stringify({ secret: Value }), { mode: 0o600 });
+    console.log('IMAGE_STORAGE_SECRET_CONFIGURED; private mail-server config prepared; redeploy required');
+  } else if (mode === 'configure') {
     const previous = await env();
     const backup = path.join(privateDir, 'edgeone-env-before.json');
     if (!fs.existsSync(backup)) fs.writeFileSync(backup, JSON.stringify(previous.entries));
