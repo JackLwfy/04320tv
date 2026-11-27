@@ -296,7 +296,7 @@ function LiveContent() {
 
             {/* 频道信息条 */}
             {currentChannel && (
-              <div className="bg-surface-raised border border-line rounded-lg p-3 mt-3 flex items-center gap-3">
+              <div className="live-channel-info bg-surface-raised border border-line rounded-lg p-3 mt-3 flex items-center gap-3">
                 <div className="w-10 h-10 shrink-0 rounded bg-chip flex items-center justify-center overflow-hidden">
                   {logo && !logoFailed ? (
                     <SmartImage

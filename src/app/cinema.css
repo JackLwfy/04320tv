@@ -198,3 +198,9 @@
   .live-channel-name { font-size: 15px; }
   .live-channel-group { margin-top: 3px; font-size: 12px; }
 }
+
+@media (max-width: 639px) {
+  .live-channel-info { flex-wrap: wrap; }
+  .live-channel-info > div:last-child { width: 100%; justify-content: flex-end; border-top: 1px solid rgb(var(--c-line)); padding-top: 8px; }
+  .live-channel-info > div:last-child button { min-width: 44px; min-height: 44px; }
+}
