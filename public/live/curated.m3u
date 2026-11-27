@@ -1,8 +1,8 @@
 #EXTM3U
 #PLAYLIST:04320 精选直播
-# 来源：https://github.com/iptv-org/iptv；本地浏览器验证：2026-11-27；不保证持续可用。
-#EXTINF:-1 tvg-id="ZhejiangInternationalChannel.cn@SD" group-title="中文综合",浙江国际
-https://ali-m-l.cztv.com/channels/lantian/channel10/1080p.m3u8
+# 来源：https://github.com/iptv-org/iptv；浏览器验证：2026-11-27；不保证持续可用。
+#EXTINF:-1 tvg-id="CCTV4America.cn@SD" group-title="中文综合",CCTV-4 中文国际（美洲）
+https://h5cul1yar48um3t.wcetv.com/hls/cctv4.m3u8
 #EXTINF:-1 tvg-id="GuangdongSatelliteTV.cn@SD" group-title="中文综合",广东卫视
 https://h5cul1yar48um3t.wcetv.com/hls/gdsatellite.m3u8
 #EXTINF:-1 tvg-id="CGTNDocumentary.cn@SD" group-title="纪录人文",CGTN 纪录频道（英语）
