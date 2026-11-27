@@ -28,7 +28,7 @@ import { SmartImage } from '@/components/smart-image';
  * 直播页：左侧播放器 + 频道信息 + 节目单；右侧频道侧栏。
  * 状态由 URL 驱动（?url=&name=&group=&tvgId=&epg=），支持频道深链与刷新保持。
  * 换台路径：侧栏点击、全局 ↑↓ 键盘、播放器控制条上一台/下一台（全屏可用）。
- * 移动端侧栏为底部抽屉（播放器下方通栏按钮呼出，选中频道后自动收起）。
+ * 移动端侧栏为底部抽屉（右下角 FAB 呼出，选中频道后自动收起）。
  */
 export default function LivePage() {
   return (
@@ -243,34 +243,11 @@ function LiveContent() {
                         : '请先在设置中添加直播源（M3U 订阅）'
                       : playlistsQuery.isLoading
                         ? '频道列表加载中...'
-                        : (<>
-                            <span className="lg:hidden">点击下方“频道”选择一个频道开始观看</span>
-                            <span className="hidden lg:inline">从右侧选择一个频道开始观看</span>
-                          </>)}
+                        : '从右侧选择一个频道开始观看'}
                   </p>
                 </div>
               )}
             </div>
-
-            {/* 移动端频道入口：紧邻播放器，与视频同宽 */}
-            {channels.length > 0 && (
-              <button
-                className="mt-3 flex min-h-12 w-full items-center justify-center gap-2 rounded-lg bg-accent px-4 py-3 text-sm font-medium text-on-accent transition-colors hover:bg-accent-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent lg:hidden"
-                aria-expanded={listOpen}
-                aria-controls="live-channel-panel"
-                onClick={() => setListOpen(true)}
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M4 6h16M4 12h16M4 18h16"
-                  />
-                </svg>
-                频道
-              </button>
-            )}
 
             {/* 频道信息条 */}
             {currentChannel && (
@@ -422,7 +399,6 @@ function LiveContent() {
 
           {/* 侧栏：桌面常驻 sticky；移动端底部抽屉 */}
           <aside
-            id="live-channel-panel"
             className={cn(
               'bg-surface-raised border border-line flex-col overflow-hidden',
               'fixed inset-x-0 bottom-0 z-40 h-[75vh] rounded-t-2xl shadow-2xl',
@@ -469,6 +445,24 @@ function LiveContent() {
             </div>
           </aside>
         </div>
+
+        {/* 移动端呼出频道列表的悬浮按钮 */}
+        {!listOpen && channels.length > 0 && (
+          <button
+            className="fixed bottom-4 right-4 z-30 flex items-center gap-1.5 rounded-full bg-accent px-4 py-2.5 text-sm text-on-accent shadow-lg lg:hidden"
+            onClick={() => setListOpen(true)}
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M4 6h16M4 12h16M4 18h16"
+              />
+            </svg>
+            频道
+          </button>
+        )}
       </main>
     </div>
   );
