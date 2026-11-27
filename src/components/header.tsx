@@ -54,7 +54,12 @@ export function Header({ showSearch = false }: { showSearch?: boolean }) {
           </Link>
           <nav className="cinema-primary-nav" aria-label="主导航">
             <HeaderLink href="/" active={pathname === '/'}>发现</HeaderLink>
-            {liveEnabled && <HeaderLink href="/live" active={pathname === '/live'}>直播</HeaderLink>}
+            {liveEnabled && <HeaderLink href="/live" active={pathname === '/live'}>
+              <span className="relative pr-4">
+                电视直播
+                <Icon name="tv" className="absolute -top-1 right-0 h-3 w-3 text-accent" />
+              </span>
+            </HeaderLink>}
           </nav>
 
           {showSearch && (

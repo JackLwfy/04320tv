@@ -24,9 +24,11 @@ export type IconName =
   | 'link'
   | 'alert'
   | 'gear'
+  | 'tv'
   | 'home';
 
 const PATHS: Record<IconName, ReactNode> = {
+  tv: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="m7 3 5 4 5-4M5 7h14a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2Z" />,
   close: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />,
   edit: (
     <path
