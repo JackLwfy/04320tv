@@ -1,0 +1,17 @@
+#EXTM3U
+#PLAYLIST:04320 精选直播
+# 来源：https://github.com/iptv-org/iptv；本地浏览器验证：2026-11-27；不保证持续可用。
+#EXTINF:-1 tvg-id="ZhejiangInternationalChannel.cn@SD" group-title="中文综合",浙江国际
+https://ali-m-l.cztv.com/channels/lantian/channel10/1080p.m3u8
+#EXTINF:-1 tvg-id="GuangdongSatelliteTV.cn@SD" group-title="中文综合",广东卫视
+https://h5cul1yar48um3t.wcetv.com/hls/gdsatellite.m3u8
+#EXTINF:-1 tvg-id="CGTNDocumentary.cn@SD" group-title="纪录人文",CGTN 纪录频道（英语）
+https://english-livebkali.cgtn.com/live/doccgtn.m3u8
+#EXTINF:-1 tvg-id="NHKWorldJapan.jp@SD" group-title="纪录人文",NHK WORLD-JAPAN（英语）
+https://masterpl.hls.nhkworld.jp/hls/w/live/smarttv.m3u8
+#EXTINF:-1 tvg-id="ArirangTV.kr@SD" group-title="纪录人文",Arirang 韩国国际台（英语）
+https://amdlive-ch01-ctnd-com.akamaized.net/arirang_1ch/smil:arirang_1ch.smil/playlist.m3u8
+#EXTINF:-1 tvg-id="ClassicArtsShowcase.us@SD" group-title="音乐艺术",Classic Arts 古典艺术
+https://classicarts.akamaized.net/hls/live/1024257/CAS/master.m3u8
+#EXTINF:-1 tvg-id="CGTN.cn@SD" group-title="国际资讯",CGTN 新闻频道（英语）
+https://english-livebkali.cgtn.com/live/encgtn.m3u8

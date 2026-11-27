@@ -6,7 +6,7 @@ export interface AdminSource { id: string; kind: SourceKind; name: string; url: 
 export interface Settings {
   hero: HeroConfig;
   name: string; subtitle: string; description: string; announcement: string; logo: 'a' | 'b' | 'c';
-  live: boolean; settings: boolean; recommendations: boolean;
+  live: boolean; curatedLive: boolean; settings: boolean; recommendations: boolean;
   recommendSource: string; imageMode: string; autoplay: boolean; adFilter: boolean; adultFilter: boolean;
   sources: AdminSource[];
   newsletterEnabled: boolean; newsletterStyle: 'lighthouse' | 'ticket' | 'minimal';
@@ -14,7 +14,7 @@ export interface Settings {
 export const initialSettings: Settings = {
   hero: defaultHeroConfig,
   name: '04320TV', subtitle: '光影之间', description: '搜索电影、剧集，找到下一段光影。',
-  announcement: '有些故事，仍在等你。', logo: 'a', live: true, settings: true, recommendations: true,
+  announcement: '有些故事，仍在等你。', logo: 'a', live: true, curatedLive: true, settings: true, recommendations: true,
   recommendSource: 'hot-list', imageMode: 'direct', autoplay: true, adFilter: true, adultFilter: true,
   sources: [],
   newsletterEnabled: false, newsletterStyle: 'lighthouse',
@@ -22,7 +22,7 @@ export const initialSettings: Settings = {
 export const labels: Record<keyof Settings, string> = {
   hero: '首页光影',
   name: '网站名称', subtitle: '网站副标题', description: '网站描述', announcement: '网站公告', logo: 'Logo 样式',
-  live: '直播功能', settings: '前台设置入口', recommendations: '首页推荐', recommendSource: '默认推荐来源',
+  live: '直播栏目', curatedLive: '精选直播频道', settings: '前台设置入口', recommendations: '首页推荐', recommendSource: '默认推荐来源',
   imageMode: '封面加载方式', autoplay: '自动播放下一集', adFilter: '广告过滤', adultFilter: '成人内容过滤', sources: '数据源',
   newsletterEnabled: '邮件订阅入口', newsletterStyle: '邮件订阅弹窗样式',
 };
@@ -60,6 +60,7 @@ export function validateSettings(s: Settings): { section: Section; message: stri
 export function parseSettings(value: unknown): Settings {
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('配置格式无效。');
   const input = value as Record<string, unknown>;
+  if (typeof input.curatedLive !== 'boolean') throw new Error('精选直播开关类型无效，请刷新后台后重试。');
   if (typeof input.newsletterEnabled !== 'boolean' || !['lighthouse', 'ticket', 'minimal'].includes(input.newsletterStyle as string)) throw new Error('邮件订阅配置无效。');
   for (const key of ['name', 'subtitle', 'description', 'announcement', 'logo', 'recommendSource', 'imageMode']) {
     if (typeof input[key] !== 'string') throw new Error('配置字段类型无效。');

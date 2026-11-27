@@ -51,6 +51,7 @@ describe('LIVE_ENABLED', () => {
   });
 
   it('状态接口同步开关，关闭时不下发直播源，重新开启可恢复', async () => {
+    vi.stubEnv('CURATED_LIVE_ENABLED', 'false');
     vi.stubEnv('DEFAULT_LIVE_SOURCES', '[{"name":"Test","url":"https://example.com/list.m3u"}]');
     vi.stubEnv('LIVE_ENABLED', 'false');
     const response = await status(new Request('https://local.test/api/status'));

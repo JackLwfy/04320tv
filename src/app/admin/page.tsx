@@ -200,7 +200,7 @@ export default function AdminPage() {
   function sourceUpdate(id: string, key: 'name' | 'url' | 'enabled', value: string | boolean) {
     update('sources', draft.sources.map((item) => item.id === id ? { ...item, [key]: value } : item));
   }
-  function toggle(key: 'live' | 'settings' | 'recommendations' | 'autoplay' | 'adFilter' | 'adultFilter' | 'newsletterEnabled', description: string, global = false) {
+  function toggle(key: 'live' | 'curatedLive' | 'settings' | 'recommendations' | 'autoplay' | 'adFilter' | 'adultFilter' | 'newsletterEnabled', description: string, global = false) {
     return <div className={s.toggleRow}><div><h3>{labels[key]}<span className={s.scope}>{global ? '全站设置' : '默认偏好'}</span></h3><p>{description}</p></div><button role="switch" aria-checked={draft[key]} aria-label={labels[key]} className={`${s.switch} ${draft[key] ? s.on : ''}`} onClick={() => update(key, !draft[key])}><span /></button></div>;
   }
 
@@ -237,7 +237,7 @@ export default function AdminPage() {
               {(['name', 'subtitle', 'description', 'announcement'] as const).map((key) => <label className={s.field} key={key}><span className={s.fieldLabel}>{labels[key]}{key === 'name' && <small>必填</small>}</span><span className={s.inputWrap}>{key === 'description' || key === 'announcement' ? <textarea rows={key === 'announcement' ? 3 : 2} maxLength={200} value={draft[key]} onChange={(e) => update(key, e.target.value)} /> : <input maxLength={50} value={draft[key]} onChange={(e) => update(key, e.target.value)} required={key === 'name'} />}<span className={s.counter}>{draft[key].length}/{key === 'name' || key === 'subtitle' ? 50 : 200}</span></span></label>)}
               <fieldset className={s.logoField}><legend>Logo 样式</legend><div className={s.logoOptions}>{(['a', 'b', 'c'] as const).map((value) => <label key={value} className={draft.logo === value ? s.logoSelected : ''}><input type="radio" name="logo" checked={draft.logo === value} onChange={() => update('logo', value)} /><Image src={`/brand/${value}/logo-dark.svg`} alt={describeValue(value)} width={150} height={36} /><span>{describeValue(value)}</span></label>)}</div></fieldset>
             </>}
-            {section === 'features' && <><div className={s.sectionCaption}>网站功能 <span>作用于所有访客</span></div>{toggle('live', '显示直播导航，并开放直播频道功能。', true)}{toggle('settings', '允许访客调整个人偏好及管理本地数据源。', true)}{toggle('recommendations', '在首页展示影视榜单或新番推荐。', true)}<p className={s.footnote}>直播和前台设置入口按全站开关生效，首页推荐控制首页内容展示。</p></>}
+            {section === 'features' && <><div className={s.sectionCaption}>网站功能 <span>作用于所有访客</span></div>{toggle('live', '全站总开关。关闭后隐藏直播导航，直播页返回首页，直播接口停止服务；保留频道与直播源配置。', true)}{toggle('curatedLive', '启用经过筛选的纪录、人文、音乐与综合频道。关闭仅移除精选源，不影响自定义直播源；直播栏目关闭时均不展示。', true)}{toggle('settings', '允许访客调整个人偏好及管理本地数据源。', true)}{toggle('recommendations', '在首页展示影视榜单或新番推荐。', true)}<p className={s.footnote}>修改后需保存并部署，访客刷新页面后生效。关闭直播不会清除频道收藏和已有直播源。</p></>}
             {section === 'playback' && <>
               <label className={s.field}>默认推荐来源<select value={draft.recommendSource} onChange={(e) => update('recommendSource', e.target.value)}><option value="hot-list">影视热榜</option><option value="douban">豆瓣热门</option><option value="bangumi">新番放送</option></select></label>
               <label className={s.field}>封面加载方式<select value={draft.imageMode} onChange={(e) => update('imageMode', e.target.value)}><option value="direct">直连优先 · 节省代理流量</option><option value="proxy">内置代理优先</option></select></label>

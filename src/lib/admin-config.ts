@@ -5,7 +5,7 @@ import { heroEnvKeys, heroFromEnv, heroToEnv } from './home-hero';
 export const settingKeys = {
   newsletterEnabled: 'NEXT_PUBLIC_NEWSLETTER_ENABLED', newsletterStyle: 'NEXT_PUBLIC_NEWSLETTER_STYLE',
   name: 'NEXT_PUBLIC_SITE_NAME', subtitle: 'NEXT_PUBLIC_SITE_SUBTITLE', description: 'NEXT_PUBLIC_SITE_DESCRIPTION', announcement: 'NEXT_PUBLIC_SITE_ANNOUNCEMENT', logo: 'NEXT_PUBLIC_LOGO_STYLE',
-  live: 'LIVE_ENABLED', settings: 'SETTINGS_ENABLED', recommendations: 'NEXT_PUBLIC_RECOMMENDATIONS_ENABLED',
+  live: 'LIVE_ENABLED', curatedLive: 'CURATED_LIVE_ENABLED', settings: 'SETTINGS_ENABLED', recommendations: 'NEXT_PUBLIC_RECOMMENDATIONS_ENABLED',
   recommendSource: 'DEFAULT_RECOMMEND_SOURCE', imageMode: 'DEFAULT_IMAGE_MODE', autoplay: 'NEXT_PUBLIC_DEFAULT_AUTOPLAY', adFilter: 'NEXT_PUBLIC_DEFAULT_AD_FILTER', adultFilter: 'NEXT_PUBLIC_DEFAULT_ADULT_FILTER',
 } as const;
 export const sourceKeys = { vod: 'DEFAULT_SOURCES', live: 'DEFAULT_LIVE_SOURCES', subscription: 'DEFAULT_SUBSCRIPTIONS' } as const;
@@ -27,7 +27,7 @@ export function settingsFromEnv(env: Env): Settings {
   const settings = structuredClone(initialSettings);
   settings.hero = heroFromEnv(env);
   for (const [key, envKey] of Object.entries(settingKeys)) {
-    if (env[envKey] !== undefined) Object.assign(settings, { [key]: typeof initialSettings[key as keyof Settings] === 'boolean' ? env[envKey] !== 'false' : env[envKey] });
+    if (env[envKey] !== undefined) Object.assign(settings, { [key]: typeof initialSettings[key as keyof Settings] === 'boolean' ? !['false', '0'].includes(env[envKey].trim().toLowerCase()) : env[envKey] });
   }
   settings.logo = settings.logo.toLowerCase() as Settings['logo'];
   settings.sources = (Object.keys(sourceKeys) as SourceKind[]).flatMap(kind => rawSources(env, kind).map((item, index) => ({ id: `${kind}-${index}`, kind, name: String(item.name || item.url || ''), url: String(item.url || ''), enabled: item.enabled !== false })));

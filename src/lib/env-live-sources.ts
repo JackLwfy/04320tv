@@ -1,4 +1,5 @@
 import type { LiveSourceConfig } from './types';
+import { curatedLiveSource, isCuratedLiveEnabled } from './curated-live';
 
 /**
  * 部署者通过 DEFAULT_LIVE_SOURCES 环境变量预置的直播源（M3U 订阅）。
@@ -6,8 +7,9 @@ import type { LiveSourceConfig } from './types';
  * 解析失败时告警并整体忽略，不影响站点运行。模式与 env-sources.ts 对齐。
  */
 export function getEnvLiveSources(): LiveSourceConfig[] {
+  const curated = isCuratedLiveEnabled() ? [curatedLiveSource] : [];
   const raw = process.env.DEFAULT_LIVE_SOURCES;
-  if (!raw || !raw.trim()) return [];
+  if (!raw || !raw.trim()) return curated;
   try {
     const parsed: unknown = JSON.parse(raw);
     if (!Array.isArray(parsed)) throw new Error('必须是 JSON 数组');
@@ -29,9 +31,11 @@ export function getEnvLiveSources(): LiveSourceConfig[] {
         epg: typeof epg === 'string' && epg.trim() ? epg.trim() : undefined,
       };
     });
-    return list.filter((_, i) => parsed[i].enabled !== false);
+    const enabled = list.filter((_, i) => parsed[i].enabled !== false);
+    // 明确配置过同地址的源时尊重其 enabled 状态，避免重复与重新启用。
+    return [...curated.filter(s => !list.some(item => item.url === s.url)), ...enabled];
   } catch (err) {
     console.warn('[LibreTV] DEFAULT_LIVE_SOURCES 解析失败，已忽略：', err instanceof Error ? err.message : err);
-    return [];
+    return curated;
   }
 }
