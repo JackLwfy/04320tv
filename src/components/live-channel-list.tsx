@@ -216,7 +216,7 @@ export function LiveChannelList({ channels, groups, currentUrl, onSelect, onFilt
   return (
     <div className="flex flex-col h-full min-h-0">
       {/* 视图 tab */}
-      <div className="flex items-center gap-1 px-3 pt-2.5 pb-2 border-b border-line shrink-0">
+      <div className="live-channel-tabs flex items-center gap-1 px-3 pt-2.5 pb-2 border-b border-line shrink-0">
         {(
           [
             ['all', `全部${channels.length ? ` ${channels.length}` : ''}`],
@@ -228,7 +228,7 @@ export function LiveChannelList({ channels, groups, currentUrl, onSelect, onFilt
             key={v}
             className={cn(
               'px-2.5 py-1 rounded-md text-xs transition-colors',
-              view === v ? 'bg-accent/10 text-accent font-medium' : 'text-muted hover:text-content hover:bg-hover'
+              view === v ? 'is-active bg-accent/10 text-accent font-medium' : 'text-muted hover:text-content hover:bg-hover'
             )}
             onClick={() => setView(v)}
           >
@@ -238,7 +238,7 @@ export function LiveChannelList({ channels, groups, currentUrl, onSelect, onFilt
       </div>
 
       {/* 搜索 + 排序 */}
-      <div className="px-3 py-2 shrink-0 flex items-center gap-1.5">
+      <div className="live-channel-search px-3 py-2 shrink-0 flex items-center gap-1.5">
         <input
           className="input w-full !py-1.5 text-xs"
           placeholder="搜索频道 / tvg-id / 分组..."
@@ -271,7 +271,7 @@ export function LiveChannelList({ channels, groups, currentUrl, onSelect, onFilt
       </div>
 
       {/* 测活 + 可用性筛选工具条 */}
-      <div className="flex items-center gap-1.5 px-3 pb-2 shrink-0 flex-wrap">
+      <div className="live-channel-tools flex items-center gap-1.5 px-3 pb-2 shrink-0 flex-wrap">
         <button
           className="btn-ghost btn-sm"
           disabled={isProbing || filtered.length === 0}
@@ -343,7 +343,7 @@ export function LiveChannelList({ channels, groups, currentUrl, onSelect, onFilt
 
       {/* 分组标签条（横向可滑动） */}
       {view === 'all' && groups.length > 0 && (
-        <div className="px-3 pb-2 shrink-0">
+        <div className="live-channel-groups px-3 pb-2 shrink-0">
           <div className="flex gap-1.5 overflow-x-auto scrollbar-thin pb-1">
             <GroupChip active={!group} label="全部分组" onClick={() => setGroup('')} />
             {groups.map((g) => (
@@ -492,7 +492,7 @@ const ChannelRow = memo(function ChannelRow({
           键盘操作由外层列表容器的 ↑↓ 导航提供 */}
       <div
         className={cn(
-          'group flex items-center gap-2.5 px-2 py-2 rounded-md cursor-pointer transition-colors relative',
+          'live-channel-row group flex items-center gap-2.5 px-2 py-2 rounded-md cursor-pointer transition-colors relative',
           active ? 'bg-accent/10' : 'hover:bg-hover',
           cursor && 'ring-1 ring-accent/70'
         )}
@@ -506,7 +506,7 @@ const ChannelRow = memo(function ChannelRow({
           )}
         />
         {/* 台标 */}
-        <div className="w-7 h-7 shrink-0 rounded bg-chip flex items-center justify-center overflow-hidden">
+        <div className="live-channel-logo w-7 h-7 shrink-0 rounded bg-chip flex items-center justify-center overflow-hidden">
           {logo && !logoFailed ? (
             <SmartImage
               url={logo}
@@ -528,7 +528,7 @@ const ChannelRow = memo(function ChannelRow({
                 title={probeTitle}
               />
             )}
-            <span className={cn('text-xs truncate', active ? 'text-accent font-medium' : 'text-content')}>
+            <span className={cn('live-channel-name text-xs truncate', active ? 'text-accent font-medium' : 'text-content')}>
               {channel.name}
             </span>
             {isHevc && (
@@ -541,7 +541,7 @@ const ChannelRow = memo(function ChannelRow({
             )}
           </div>
           {channel.group && (
-            <div className="text-[10px] text-faint truncate">{channel.group}</div>
+            <div className="live-channel-group text-[10px] text-faint truncate">{channel.group}</div>
           )}
         </div>
         {/* 最近观看单条删除（仅最近视图；移动端常显） */}

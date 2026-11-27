@@ -178,3 +178,23 @@
   .cinema-recommend-actions button { font-size: 12px; }
 }
 @media (prefers-reduced-motion: reduce) { .cinema-hero-picture, .cinema-hero-copy { animation: none; } .cinema-poster img { transition: none; } .cinema-poster:hover img { transform: none; } }
+
+/* Mobile live selector: match the full-width entry and roomy bottom sheet. */
+@media (max-width: 1023px) {
+  .live-channel-sheet { height: 75dvh; border-radius: 24px 24px 0 0; padding-bottom: env(safe-area-inset-bottom); }
+  .live-channel-sheet [data-channel-list] { overscroll-behavior: contain; }
+  .live-channel-tabs { gap: 8px; padding: 0 16px 12px; border-bottom: 0; }
+  .live-channel-tabs button { flex: 1; min-height: 44px; border-radius: 10px; font-size: 15px; }
+  .live-channel-tabs button.is-active { background: rgb(var(--c-accent)); color: rgb(var(--c-on-accent)); }
+  .live-channel-search { padding: 4px 16px 12px; gap: 10px; }
+  .live-channel-search input { min-width: 0; min-height: 44px; font-size: 16px; }
+  .live-channel-search button { min-height: 44px; font-size: 14px; }
+  .live-channel-tools, .live-channel-groups { padding-inline: 16px; }
+  .live-channel-tools button, .live-channel-groups button { min-height: 40px; font-size: 14px; }
+  .live-channel-row { min-height: 64px; padding: 10px 8px; border-bottom: 1px solid rgb(var(--c-line) / .65); border-radius: 0; }
+  .live-channel-row > button { min-width: 44px; min-height: 44px; display: grid; place-items: center; }
+  .live-channel-row > button svg { width: 20px; height: 20px; }
+  .live-channel-logo { width: 44px; height: 36px; }
+  .live-channel-name { font-size: 15px; }
+  .live-channel-group { margin-top: 3px; font-size: 12px; }
+}
